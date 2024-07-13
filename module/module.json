@@ -1,0 +1,15 @@
+{
+    "Type": "nap::ModuleInfo",
+    "mID": "ModuleInfo",
+    "RequiredModules": [
+        "naprender",
+        "napaudio",
+        "napvideo",
+        "napscene",
+        "napcameracontrol",
+        "napparameter",
+        "naprest",
+        "napdatabase"
+    ],
+    "WindowsDllSearchPaths": []
+}

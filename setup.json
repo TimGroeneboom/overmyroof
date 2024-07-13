@@ -1,0 +1,23 @@
+{
+  "project" : {
+    "name" : "OverMyRoof",
+    "url" : "git@github.com:TimGroeneboom/overmyroof.git",
+    "branch" : "main"
+  },
+  "nap" : {
+    "branch" : "main",
+    "url" : "git@github.com:napframework/nap.git"
+  },
+  "modules" : [
+    {
+      "name" : "naprest",
+      "url" : "git@github.com:naivisoftware/naprest.git",
+      "branch" : "main"
+    },
+    {
+      "name": "napdatabase",
+      "url": "git@github.com:TimGroeneboom/napdatabase.git",
+      "branch": "main"
+    }
+  ]
+}
