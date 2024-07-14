@@ -18,49 +18,30 @@ namespace nap
 {
     bool FlightStatesData::ParseData(std::vector<FlightState>& states, utility::ErrorState& errorState)
     {
-        FlightState state;
-        bool found_flights = false;
-
         rapidjson::Document d(rapidjson::kObjectType);
         d.Parse(mData.c_str());
         for (rapidjson::Value::ConstMemberIterator p = d.MemberBegin(); p != d.MemberEnd(); ++p)
         {
-            std::string name = p->name.GetString();
-            // strip empty spaces
-            name.erase(std::remove_if(name.begin(), name.end(), ::isspace), name.end());
-
-            if(p->value.IsArray() && name == "flights")
+            if(p->value.IsArray())
             {
-                found_flights = true;
                 for (rapidjson::Value::ConstValueIterator q = p->value.Begin(); q != p->value.End(); ++q)
                 {
-                    if( q->HasMember("icao") &&
-                        q->HasMember("aircraft_type") &&
-                        q->HasMember("reg") &&
-                        q->HasMember("lat") &&
-                        q->HasMember("lon") &&
-                        q->HasMember("altitude"))
+                    for(auto m = q->MemberBegin(); m != q->MemberEnd(); ++m)
                     {
-                        state.mICAO = q->FindMember("icao")->value.GetString();
-                        state.mRegistration = q->FindMember("reg")->value.GetString();
-                        state.mAircraftType = q->FindMember("aircraft_type")->value.GetString();
-                        state.mLatitude = q->FindMember("lat")->value.GetFloat();
-                        state.mLongitude = q->FindMember("lon")->value.GetFloat();
-                        state.mAltitude = q->FindMember("altitude")->value.GetFloat();
-                        states.push_back(state);
-                    }else
-                    {
-                        errorState.fail("Missing required fields in flight data");
-                        return false;
+                        if(m->value.IsArray())
+                        {
+                            FlightState state;
+                            state.mLatitude = m->value[0].GetFloat();
+                            state.mLongitude = m->value[1].GetFloat();
+                            state.mAltitude = m->value[2].GetFloat();
+                            state.mICAO = m->value[3].GetString();
+                            state.mRegistration = m->value[4].GetString();
+                            state.mAircraftType = m->value[5].GetString();
+                            states.push_back(state);
+                        }
                     }
                 }
             }
-        }
-
-        if(!found_flights)
-        {
-            errorState.fail("No flights found in data");
-            return false;
         }
 
         return true;

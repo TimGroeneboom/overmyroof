@@ -10,7 +10,6 @@
 #include <sceneservice.h>
 #include <inputservice.h>
 #include <scene.h>
-#include <renderwindow.h>
 #include <entity.h>
 #include <app.h>
 
@@ -50,23 +49,6 @@ namespace nap
 		void update(double deltaTime) override;
 
         /**
-         * Render is called after update. Use this call to render objects to a specific target
-         */
-        void render() override;
-
-        /**
-         * Called when the app receives a window message.
-		 * @param windowEvent the window message that occurred
-         */
-        void windowMessageReceived(WindowEventPtr windowEvent) override;
-
-        /**
-         * Called when the app receives an input message (from a mouse, keyboard etc.)
-		 * @param inputEvent the input event that occurred
-         */
-        void inputMessageReceived(InputEventPtr inputEvent) override;
-
-        /**
 		 * Called when the app is shutting down after quit() has been invoked
 		 * @return the application exit code, this is returned when the main loop is exited
          */
@@ -74,20 +56,8 @@ namespace nap
 
     private:
         ResourceManager*			mResourceManager = nullptr;		///< Manages all the loaded data
-		RenderService*				mRenderService = nullptr;		///< Render Service that handles render calls
 		SceneService*				mSceneService = nullptr;		///< Manages all the objects in the scene
-		InputService*				mInputService = nullptr;		///< Input service for processing input
-		IMGuiService*				mGuiService = nullptr;			///< Manages GUI related update / draw calls
-		ObjectPtr<RenderWindow>		mRenderWindow;					///< Pointer to the render window	
 		ObjectPtr<Scene>			mScene = nullptr;				///< Pointer to the main scene
-		ObjectPtr<EntityInstance>	mCameraEntity = nullptr;		///< Pointer to the entity that holds the perspective camera
-		ObjectPtr<EntityInstance>	mGnomonEntity = nullptr;		///< Pointer to the entity that can render the gnomon
-
-        ObjectPtr<RestClient>       mRestClient = nullptr;
-
-        std::unique_ptr<Database>   mDatabase = nullptr;
-        rtti::Factory mDatabaseFactory;
-
-        DatabaseTable*              mTableDatabase;
+        ObjectPtr<EntityInstance>	mPlaneLoggerEntity = nullptr;
 	};
 }

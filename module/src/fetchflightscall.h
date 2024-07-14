@@ -4,6 +4,7 @@
 #include <database.h>
 #include <databasetable.h>
 
+#include "statescache.h"
 #include "flightstate.h"
 
 namespace nap
@@ -17,6 +18,7 @@ namespace nap
         RestResponse call(const std::unordered_map<std::string, std::unique_ptr<APIBaseValue>> &values) override;
 
         ResourcePtr<FlightStatesTable> mFlightStatesTable;
+        ResourcePtr<StatesCache> mStatesCache;
     private:
         DatabaseTable* mDatabaseTable;
     };

@@ -6,11 +6,21 @@
 #include "rapidjson/writer.h"
 #include "rapidjson/prettywriter.h"
 #include "restutils.h"
+#include "restcontenttypes.h"
+
 #include <math.h>
 
 RTTI_BEGIN_CLASS(nap::FetchFlightsCall)
     RTTI_PROPERTY("FlightStatesTable", &nap::FetchFlightsCall::mFlightStatesTable, nap::rtti::EPropertyMetaData::Required)
+    RTTI_PROPERTY("StatesCache", &nap::FetchFlightsCall::mStatesCache, nap::rtti::EPropertyMetaData::Required)
 RTTI_END_CLASS
+
+#define CALL_DEBUG 0
+#if CALL_DEBUG
+#define CALL_DEBUG_LOG(...) nap::Logger::info(__VA_ARGS__)
+#else
+#define CALL_DEBUG_LOG(...)
+#endif
 
 namespace nap
 {
@@ -59,37 +69,68 @@ namespace nap
 
         std::vector<std::unique_ptr<rtti::Object>> objects;
         rtti::Factory factory;
-        std::vector<std::string> callsigns_to_ignore;
+        std::unordered_map<std::string, std::string> callsigns_to_ignore;
         std::vector<FlightState> filtered_states;
         std::unordered_map<std::string, uint64> timestamps;
         std::unordered_map<std::string, float> distances;
-        if(mDatabaseTable->query(utility::stringFormat("%s > %s AND %s < %s", "TimeStamp", begin.c_str(), "TimeStamp", end.c_str()),
-                                 objects, factory, error_state))
-        {
-            //nap::Logger::info("Got %d objects", objects.size());
 
-            for(auto& object : objects)
+        uint64 begin_timestamp_db = std::stoull(begin);
+        uint64 end_timestamp_db = std::stoull(end);
+        uint64 begin_timestamp_cache = mStatesCache->getOldestTimeStamp();
+        uint64 end_timestamp_cache = mStatesCache->getMostRecentTimeStamp();
+        bool ignore_cache = false;
+        bool ignore_database = false;
+
+        if(begin_timestamp_db < begin_timestamp_cache && end_timestamp_db < end_timestamp_cache)
+        {
+            ignore_cache = true;
+        }else if(begin_timestamp_db < begin_timestamp_cache && end_timestamp_db > begin_timestamp_cache)
+        {
+            end_timestamp_db = begin_timestamp_cache;
+        }else if(begin_timestamp_db > begin_timestamp_cache)
+        {
+            begin_timestamp_cache = begin_timestamp_db;
+            end_timestamp_cache = end_timestamp_db;
+            ignore_database = true;
+        }
+
+        if(!ignore_database)
+        {
+            if(mDatabaseTable->query(utility::stringFormat("%s > %s AND %s < %s", "TimeStamp",
+                                                           std::to_string(begin_timestamp_db).c_str(),
+                                                           "TimeStamp",
+                                                           std::to_string(end_timestamp_db).c_str()),
+                                     objects, factory, error_state))
             {
-                if(object->get_type().is_derived_from<FlightStatesData>())
+                // Iterate over all the objects
+                for(auto& object : objects)
                 {
+                    assert(object->get_type().is_derived_from<FlightStatesData>());
+
+                    // Cast the object to the correct type
                     auto* data = static_cast<FlightStatesData*>(object.get());
                     std::vector<FlightState> states;
+
+                    // Parse the data
                     if(data->ParseData(states, error_state))
                     {
                         for(const auto& state : states)
                         {
-                            if(std::find(callsigns_to_ignore.begin(), callsigns_to_ignore.end(), state.mICAO) != callsigns_to_ignore.end())
+                            if(callsigns_to_ignore.find(state.mICAO) != callsigns_to_ignore.end())
                             {
                                 continue;
                             }
 
-                            double distance = calcGPSDistance(lat, lon, state.mLatitude, state.mLongitude);
-                            if(state.mAltitude < altitude && distance < radius)
+                            if(state.mAltitude < altitude)
                             {
-                                filtered_states.push_back(state);
-                                callsigns_to_ignore.emplace_back(state.mICAO);
-                                timestamps[state.mICAO] = data->mTimeStamp;
-                                distances[state.mICAO] = distance;
+                                double distance = calcGPSDistance(lat, lon, state.mLatitude, state.mLongitude);
+                                if(distance < radius)
+                                {
+                                    filtered_states.push_back(state);
+                                    callsigns_to_ignore[state.mICAO] = state.mICAO;
+                                    timestamps[state.mICAO] = data->mTimeStamp;
+                                    distances[state.mICAO] = distance;
+                                }
                             }
                         }
                     }else
@@ -98,16 +139,47 @@ namespace nap
                     }
                 }
             }
-        }else
-        {
-            return utility::generateErrorResponse(error_state.toString());
         }
 
+        std::vector<FlightStates> states;
+        if(!ignore_cache)
+        {
+            if(mStatesCache->getStates(begin_timestamp_cache, end_timestamp_cache, states))
+            {
+                for(const auto& state : states)
+                {
+                    for(const auto& flight : state.mStates)
+                    {
+                        if(callsigns_to_ignore.find(flight.mICAO) != callsigns_to_ignore.end())
+                        {
+                            continue;
+                        }
+
+                        if(flight.mAltitude < altitude)
+                        {
+                            double distance = calcGPSDistance(lat, lon, flight.mLatitude, flight.mLongitude);
+                            if(distance < radius)
+                            {
+                                filtered_states.push_back(flight);
+                                callsigns_to_ignore[flight.mICAO] = flight.mICAO;
+                                timestamps[flight.mICAO] = state.mTimeStamp;
+                                distances[flight.mICAO] = distance;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        CALL_DEBUG_LOG(*this, "Got %d states from database and %d states from cache", objects.size(), states.size());
+        CALL_DEBUG_LOG("Filtered %d states", filtered_states.size());
+
+        // Create the json document
         rapidjson::Document document(rapidjson::kObjectType);
         rapidjson::Value data(rapidjson::kObjectType);
         document.AddMember("status", "ok", document.GetAllocator());
 
-
+        // Add found flights to the response
         rapidjson::Value flights(rapidjson::kArrayType);
         for(const auto& state : filtered_states)
         {
@@ -125,16 +197,19 @@ namespace nap
         }
         data.AddMember("flights", flights, document.GetAllocator());
         data.AddMember("ms", timer.getMillis().count(), document.GetAllocator());
+        data.AddMember("states", objects.size() + states.size(), document.GetAllocator());
         document.AddMember("data", data, document.GetAllocator());
 
+        // Serialize the response
         rapidjson::StringBuffer buffer;
         rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
         writer.SetMaxDecimalPlaces(4);
         document.Accept(writer);
 
+        // Create the response
         RestResponse response;
         response.mData = buffer.GetString();
-        response.mContentType = "application/json";
+        response.mContentType = rest::contenttypes::json;
 
         return response;
     }
@@ -163,7 +238,6 @@ namespace nap
 
         double distance = RADIO_TERRESTRE * c;
 
-        // std::cout <<__FILE__ << "." << __FUNCTION__ << " line:" << __LINE__ << "  "
 
         return distance;
     }

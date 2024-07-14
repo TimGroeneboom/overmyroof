@@ -7,6 +7,7 @@
 #include <restclient.h>
 #include <entity.h>
 #include <rtti/factory.h>
+#include <statescache.h>
 
 #include "flightstate.h"
 
@@ -21,6 +22,7 @@ namespace nap
     public:
         ResourcePtr<RestClient> mRestClient;
         ResourcePtr<FlightStatesTable> mFlightStatesTable;
+        ResourcePtr<StatesCache> mStatesCache;
         float mInterval = 10.0f;
     };
 
@@ -33,9 +35,12 @@ namespace nap
         void update(double deltaTime) override;
 
         bool init(utility::ErrorState &errorState) override;
+
+        void clear();
     private:
         RestClient* mRestClient;
         DatabaseTable* mFlightStatesTable;
+        StatesCache* mStatesCache;
 
         float mInterval = 10.0f;
         double mTime = 0.0;
