@@ -2,11 +2,11 @@
 //
 // Local Includes
 #include "exampleapp.h"
+#include "siginteventhandler.h"
 
 // Nap includes
 #include <apprunner.h>
 #include <nap/logger.h>
-#include <guiappeventhandler.h>
 
 // Main loop
 int main(int argc, char *argv[])
@@ -16,7 +16,7 @@ int main(int argc, char *argv[])
 
     // Create the application runner, based on the app to run
 	// and event handler that is used to forward information into the app.
-    nap::AppRunner<nap::CoreApp, nap::AppEventHandler> app_runner(core);
+    nap::AppRunner<nap::CoreApp, nap::SigIntEventHandler> app_runner(core);
 
     // Start running
     nap::utility::ErrorState error;

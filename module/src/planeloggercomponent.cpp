@@ -34,11 +34,13 @@ namespace nap
 
         mTime = mInterval;
 
+        // Fill cache with data from the last 24 hours
+        nap::Logger::info(*this, "Filling cache with data from the last 24 hours");
         auto now = getCurrentDateTime();
         std::string now_format = utility::stringFormat("%d%02d%02d%02d%02d%02d", now.getYear(), now.getMonth(), now.getDayInTheMonth(), now.getHour(), now.getMinute(), now.getSecond());
         uint64 now_uint64 = std::stoull(now_format);
 
-        auto yes = DateTime(SystemClock::now() - std::chrono::hours(24));
+        auto yes = DateTime(SystemClock::now() - std::chrono::hours(48));
         std::string yes_format = utility::stringFormat("%d%02d%02d%02d%02d%02d", yes.getYear(), yes.getMonth(), yes.getDayInTheMonth(), yes.getHour(), yes.getMinute(), yes.getSecond());
         uint64 yes_uint64 = std::stoull(yes_format);
 
@@ -63,6 +65,12 @@ namespace nap
                 // Parse the data
                 if(data->ParseData(states, e))
                 {
+                    // sort by altitude
+                    std::sort(states.begin(), states.end(), [](const FlightState& a, const FlightState& b)
+                    {
+                        return a.mAltitude < b.mAltitude;
+                    });
+
                     for(const auto &state: states)
                     {
                         mStatesCache->addStates(data->mTimeStamp, states);
@@ -76,6 +84,8 @@ namespace nap
         {
             nap::Logger::error(*this, "Error querying database : %s", e.toString().c_str());
         }
+
+        nap::Logger::info(*this, "Cache filled with %i states", objects.size());
 
         return true;
     }
@@ -278,6 +288,12 @@ namespace nap
                         }
                     }
                 }
+
+                // sort by altitude
+                std::sort(states.mStates.begin(), states.mStates.end(), [](const FlightState& a, const FlightState& b)
+                {
+                    return a.mAltitude < b.mAltitude;
+                });
 
                 //
                 mStatesCache->addStates(now_uint64, states.mStates);

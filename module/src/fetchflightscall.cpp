@@ -74,6 +74,7 @@ namespace nap
         std::unordered_map<std::string, uint64> timestamps;
         std::unordered_map<std::string, float> distances;
 
+        // Determine how many states we need to fetch from the database and cache
         uint64 begin_timestamp_db = std::stoull(begin);
         uint64 end_timestamp_db = std::stoull(end);
         uint64 begin_timestamp_cache = mStatesCache->getOldestTimeStamp();
@@ -81,14 +82,17 @@ namespace nap
         bool ignore_cache = false;
         bool ignore_database = false;
 
+        // Completely ignore the cache if timestamps are not overlapping with the cache
         if(begin_timestamp_db < begin_timestamp_cache && end_timestamp_db < end_timestamp_cache)
         {
             ignore_cache = true;
         }else if(begin_timestamp_db < begin_timestamp_cache && end_timestamp_db > begin_timestamp_cache)
         {
+            // Fetch from cache and database
             end_timestamp_db = begin_timestamp_cache;
         }else if(begin_timestamp_db > begin_timestamp_cache)
         {
+            // Fetch only from cache
             begin_timestamp_cache = begin_timestamp_db;
             end_timestamp_cache = end_timestamp_db;
             ignore_database = true;
@@ -131,6 +135,10 @@ namespace nap
                                     timestamps[state.mICAO] = data->mTimeStamp;
                                     distances[state.mICAO] = distance;
                                 }
+                            }else
+                            {
+                                // We can break out the loop since the states are sorted by altitude
+                                break;
                             }
                         }
                     }else
@@ -165,6 +173,10 @@ namespace nap
                                 timestamps[flight.mICAO] = state.mTimeStamp;
                                 distances[flight.mICAO] = distance;
                             }
+                        }else
+                        {
+                            // We can break out the loop since the states are sorted by altitude
+                            break;
                         }
                     }
                 }
@@ -172,7 +184,7 @@ namespace nap
         }
 
         CALL_DEBUG_LOG(*this, "Got %d states from database and %d states from cache", objects.size(), states.size());
-        CALL_DEBUG_LOG("Filtered %d states", filtered_states.size());
+        CALL_DEBUG_LOG(*this, "Filtered %d states", filtered_states.size());
 
         // Create the json document
         rapidjson::Document document(rapidjson::kObjectType);

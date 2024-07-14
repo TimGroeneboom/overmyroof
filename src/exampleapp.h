@@ -53,7 +53,6 @@ namespace nap
 		 * @return the application exit code, this is returned when the main loop is exited
          */
         int shutdown() override;
-
     private:
         ResourceManager*			mResourceManager = nullptr;		///< Manages all the loaded data
 		SceneService*				mSceneService = nullptr;		///< Manages all the objects in the scene
