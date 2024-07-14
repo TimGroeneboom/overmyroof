@@ -5,8 +5,7 @@
     "Version": "1.0.0",
     "RequiredModules": [
         "napovermyroof",
-        "napapp",
-        "napparametergui"
+        "napapp"
     ],
     "Data": "data/default.json",
     "ServiceConfig": "",
