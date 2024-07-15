@@ -10,10 +10,14 @@
 #include <statescache.h>
 
 #include "flightstate.h"
+#include "rect.h"
 
 namespace nap
 {
+
+    // Forward declarations
     class PlaneLoggerComponentInstance;
+
 
     class NAPAPI PlaneLoggerComponent : public Component
     {
@@ -24,6 +28,10 @@ namespace nap
         ResourcePtr<FlightStatesTable> mFlightStatesTable;
         ResourcePtr<StatesCache> mStatesCache;
         float mInterval = 10.0f;
+        int mRetainHours = 768;
+        int mCacheHours = 24;
+        std::string mAdress = "/zones/fcgi/feed.js";
+        glm::vec4 mBounds = {53.445884435606054, 50.749405057563486, 3.5163031843031223, 7.9136148705580505};
     };
 
     class NAPAPI PlaneLoggerComponentInstance : public ComponentInstance
@@ -44,5 +52,9 @@ namespace nap
 
         float mInterval = 10.0f;
         double mTime = 0.0;
+        int mRetainHours = 768;
+        int mCacheHours = 24;
+        std::string mAddress = "/zones/fcgi/feed.js";
+        glm::vec4 mBounds = {53.445884435606054, 50.749405057563486, 3.5163031843031223, 7.9136148705580505};
     };
 }

@@ -11,6 +11,10 @@ RTTI_BEGIN_CLASS(nap::PlaneLoggerComponent)
     RTTI_PROPERTY("Interval", &nap::PlaneLoggerComponent::mInterval, nap::rtti::EPropertyMetaData::Default)
     RTTI_PROPERTY("FlightStatesTable", &nap::PlaneLoggerComponent::mFlightStatesTable, nap::rtti::EPropertyMetaData::Required)
     RTTI_PROPERTY("StatesCache", &nap::PlaneLoggerComponent::mStatesCache, nap::rtti::EPropertyMetaData::Required)
+    RTTI_PROPERTY("RetainHours", &nap::PlaneLoggerComponent::mRetainHours, nap::rtti::EPropertyMetaData::Default)
+    RTTI_PROPERTY("CacheHours", &nap::PlaneLoggerComponent::mCacheHours, nap::rtti::EPropertyMetaData::Default)
+    RTTI_PROPERTY("Adress", &nap::PlaneLoggerComponent::mAdress, nap::rtti::EPropertyMetaData::Default)
+    RTTI_PROPERTY("Bounds", &nap::PlaneLoggerComponent::mBounds, nap::rtti::EPropertyMetaData::Default)
 RTTI_END_CLASS
 
 RTTI_BEGIN_CLASS_NO_DEFAULT_CONSTRUCTOR(nap::PlaneLoggerComponentInstance)
@@ -31,16 +35,20 @@ namespace nap
         mInterval = resource->mInterval;
         mFlightStatesTable = resource->mFlightStatesTable->getDatabaseTable();
         mStatesCache = resource->mStatesCache.get();
+        mRetainHours = resource->mRetainHours;
+        mCacheHours = resource->mCacheHours;
+        mAddress = resource->mAdress;
+        mBounds = resource->mBounds;
 
         mTime = mInterval;
 
-        // Fill cache with data from the last 24 hours
+        // Fill cache with data from the last cache hours
         nap::Logger::info(*this, "Filling cache with data from the last 24 hours");
         auto now = getCurrentDateTime();
         std::string now_format = utility::stringFormat("%d%02d%02d%02d%02d%02d", now.getYear(), now.getMonth(), now.getDayInTheMonth(), now.getHour(), now.getMinute(), now.getSecond());
         uint64 now_uint64 = std::stoull(now_format);
 
-        auto yes = DateTime(SystemClock::now() - std::chrono::hours(48));
+        auto yes = DateTime(SystemClock::now() - std::chrono::hours(mCacheHours));
         std::string yes_format = utility::stringFormat("%d%02d%02d%02d%02d%02d", yes.getYear(), yes.getMonth(), yes.getDayInTheMonth(), yes.getHour(), yes.getMinute(), yes.getSecond());
         uint64 yes_uint64 = std::stoull(yes_format);
 
@@ -112,8 +120,8 @@ namespace nap
             params.emplace_back(std::make_unique<APIValue<int>>("gliders", 1));
             params.emplace_back(std::make_unique<APIValue<int>>("stats", 1));
             params.emplace_back(std::make_unique<APIValue<int>>("limit", 5000));
-            params.emplace_back(std::make_unique<APIDoubleArray>("bounds", std::vector<double>{53.445884435606054, 50.749405057563486, 3.5163031843031223, 7.9136148705580505}));
-            mRestClient->get("/zones/fcgi/feed.js", params, [this](const RestResponse& response)
+            params.emplace_back(std::make_unique<APIDoubleArray>("bounds", std::vector<double>{mBounds[0], mBounds[1], mBounds[2], mBounds[3]}));
+            mRestClient->get(mAddress, params, [this](const RestResponse& response)
             {
                 FlightStatesData state;
 
@@ -256,17 +264,6 @@ namespace nap
 
                         if(add_flight)
                         {
-                            rapidjson::Value flight(rapidjson::kObjectType);
-                            rapidjson::Value data(rapidjson::kArrayType);
-
-                            data.PushBack(lat, document.GetAllocator());
-                            data.PushBack(lon, document.GetAllocator());
-                            data.PushBack(altitude, document.GetAllocator());
-                            data.PushBack(rapidjson::StringRef(icao->c_str()), document.GetAllocator());
-                            data.PushBack(rapidjson::StringRef(reg->c_str()), document.GetAllocator());
-                            data.PushBack(rapidjson::StringRef(aircraft_type->c_str()), document.GetAllocator());
-                            data.PushBack(altitude, document.GetAllocator());
-
                             FlightState flight_state;
                             flight_state.mAircraftType = *aircraft_type;
                             flight_state.mAltitude = altitude;
@@ -275,14 +272,6 @@ namespace nap
                             flight_state.mLongitude = lon;
                             flight_state.mRegistration = *reg;
                             states.mStates.emplace_back(flight_state);
-
-                            flight.AddMember("data", data, document.GetAllocator());
-
-                            flights.PushBack(flight, document.GetAllocator());
-
-                            strings.push_back(std::move(icao));
-                            strings.push_back(std::move(reg));
-                            strings.push_back(std::move(aircraft_type));
 
                             states_added++;
                         }
@@ -295,8 +284,25 @@ namespace nap
                     return a.mAltitude < b.mAltitude;
                 });
 
-                //
+                // add to cache
                 mStatesCache->addStates(now_uint64, states.mStates);
+
+                // add to database
+                for(const auto &state: states.mStates)
+                {
+                    rapidjson::Value flight(rapidjson::kObjectType);
+                    rapidjson::Value data(rapidjson::kArrayType);
+
+                    data.PushBack(state.mLatitude, document.GetAllocator());
+                    data.PushBack(state.mLongitude, document.GetAllocator());
+                    data.PushBack(state.mAltitude, document.GetAllocator());
+                    data.PushBack(rapidjson::StringRef(state.mICAO.c_str()), document.GetAllocator());
+                    data.PushBack(rapidjson::StringRef(state.mRegistration.c_str()), document.GetAllocator());
+                    data.PushBack(rapidjson::StringRef(state.mAircraftType.c_str()), document.GetAllocator());
+
+                    flight.AddMember("data", data, document.GetAllocator());
+                    flights.PushBack(flight, document.GetAllocator());
+                }
 
                 // Add the flights to the document
                 document.AddMember("flights", flights, document.GetAllocator());
@@ -315,6 +321,15 @@ namespace nap
                 }else
                 {
                     nap::Logger::info(*this, "Successfully wrote %i states to database", states_added);
+                }
+
+                // Remove entries older than retain hours property
+                auto past = DateTime(SystemClock::now() - std::chrono::hours(mRetainHours));
+                uint64 past_uint64 = std::stoull(utility::stringFormat("%d%02d%02d%02d%02d%02d", past.getYear(), past.getMonth(), past.getDayInTheMonth(), past.getHour(), past.getMinute(), past.getSecond()));
+                nap::Logger::info(*this, "Removing entries older than %s", past.toString().c_str());
+                if(!mFlightStatesTable->remove(utility::stringFormat("%s < %s", "TimeStamp", std::to_string(past_uint64).c_str()), err))
+                {
+                    nap::Logger::error(*this, "Error removing old entries : %s", err.toString().c_str());
                 }
             }, [this](const utility::ErrorState& error)
             {

@@ -5,8 +5,6 @@
 #include <nap/resourceptr.h>
 
 // Module includes
-#include <renderservice.h>
-#include <imguiservice.h>
 #include <sceneservice.h>
 #include <inputservice.h>
 #include <scene.h>

@@ -7,12 +7,6 @@
 
 // External Includes
 #include <utility/fileutils.h>
-#include <nap/logger.h>
-#include <inputrouter.h>
-#include <rendergnomoncomponent.h>
-#include <perspcameracomponent.h>
-#include <nap/datetime.h>
-#include <flightstate.h>
 
 namespace nap 
 {    
