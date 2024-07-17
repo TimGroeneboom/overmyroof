@@ -11,19 +11,16 @@
 
 #include <math.h>
 
+RTTI_BEGIN_CLASS_NO_DEFAULT_CONSTRUCTOR(nap::Pro6ppInterface)
+    RTTI_PROPERTY("Pro6ppClient", &nap::FetchFlightsCall::mPro6ppClient, nap::rtti::EPropertyMetaData::Required | nap::rtti::EPropertyMetaData::Embedded)
+    RTTI_PROPERTY("Pro6ppDescription", &nap::FetchFlightsCall::mPro6ppDescription, nap::rtti::EPropertyMetaData::Required)
+RTTI_END_CLASS
+
 RTTI_BEGIN_CLASS(nap::FetchFlightsCall)
     RTTI_PROPERTY("FlightStatesDatabase", &nap::FetchFlightsCall::mFlightStatesDatabase, nap::rtti::EPropertyMetaData::Required)
     RTTI_PROPERTY("StatesCache", &nap::FetchFlightsCall::mStatesCache, nap::rtti::EPropertyMetaData::Required)
     RTTI_PROPERTY("FlightStatesTableName", &nap::FetchFlightsCall::mFlightStatesTableName, nap::rtti::EPropertyMetaData::Default)
-    RTTI_PROPERTY("AddressCacheRetentionDays", &nap::FetchFlightsCall::mAdressCacheRetentionDays, nap::rtti::EPropertyMetaData::Default)
-    RTTI_PROPERTY("Pro6ppClient", &nap::FetchFlightsCall::mPro6ppClient, nap::rtti::EPropertyMetaData::Required | nap::rtti::EPropertyMetaData::Embedded)
-    RTTI_PROPERTY("Pro6ppAddress", &nap::FetchFlightsCall::mPro6ppAddress, nap::rtti::EPropertyMetaData::Default)
-    RTTI_PROPERTY("Pro6ppKeyFile", &nap::FetchFlightsCall::mPro6ppKeyFile, nap::rtti::EPropertyMetaData::Default | nap::rtti::EPropertyMetaData::FileLink)
-    RTTI_PROPERTY("Pro6ppPostalCodeDescription", &nap::FetchFlightsCall::mPro6ppPostalCodeDescription, nap::rtti::EPropertyMetaData::Default)
-    RTTI_PROPERTY("Pro6ppStreetNumberAndPremiseDescription", &nap::FetchFlightsCall::mPro6ppStreetNumberAndPremiseDescription, nap::rtti::EPropertyMetaData::Default)
-    RTTI_PROPERTY("Pro6ppAuthKeyDescription", &nap::FetchFlightsCall::mPro6ppAuthKeyDescription, nap::rtti::EPropertyMetaData::Default)
-    RTTI_PROPERTY("Pro6ppLatitudeDescription", &nap::FetchFlightsCall::mPro6ppLatitudeDescription, nap::rtti::EPropertyMetaData::Default)
-    RTTI_PROPERTY("Pro6ppLongitudeDescription", &nap::FetchFlightsCall::mPro6ppLongitudeDescription, nap::rtti::EPropertyMetaData::Default)
+    RTTI_PROPERTY("AddressCacheRetentionDays", &nap::FetchFlightsCall::mAddressCacheRetentionDays, nap::rtti::EPropertyMetaData::Default)
 RTTI_END_CLASS
 
 #define ENABLE_DEBUG_LOG 0
@@ -50,27 +47,80 @@ namespace nap
         SteadyTimer timer;
         timer.start();
 
+        // Get states
+        utility::ErrorState error_state;
+        std::vector<FlightState> filtered_states;
+        std::unordered_map<std::string, uint64> timestamps;
+        std::unordered_map<std::string, float> distances;
+        if(!getFlights(values, filtered_states, timestamps, distances, error_state))
+            return utility::generateErrorResponse(error_state.toString());
+
+        // Create the json document
+        rapidjson::Document document(rapidjson::kObjectType);
+        rapidjson::Value data(rapidjson::kObjectType);
+        document.AddMember("status", "ok", document.GetAllocator());
+
+        // Add found flights to the response
+        rapidjson::Value flights(rapidjson::kArrayType);
+        for(const auto& state : filtered_states)
+        {
+            rapidjson::Value flight(rapidjson::kObjectType);
+            flight.AddMember("icao", rapidjson::Value(state.mICAO.c_str(), document.GetAllocator()), document.GetAllocator());
+            flight.AddMember("reg", rapidjson::Value(state.mRegistration.c_str(), document.GetAllocator()), document.GetAllocator());
+            flight.AddMember("aircraft_type", rapidjson::Value(state.mAircraftType.c_str(), document.GetAllocator()), document.GetAllocator());
+            flight.AddMember("lat", state.mLatitude, document.GetAllocator());
+            flight.AddMember("lon", state.mLongitude, document.GetAllocator());
+            flight.AddMember("altitude", state.mAltitude, document.GetAllocator());
+            flight.AddMember("timestamp", timestamps[state.mICAO], document.GetAllocator());
+            flight.AddMember("distance", distances[state.mICAO], document.GetAllocator());
+
+            flights.PushBack(flight, document.GetAllocator());
+        }
+        data.AddMember("flights", flights, document.GetAllocator());
+        data.AddMember("ms", timer.getMillis().count(), document.GetAllocator());
+        document.AddMember("data", data, document.GetAllocator());
+
+        // Serialize the response
+        rapidjson::StringBuffer buffer;
+        rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
+        writer.SetMaxDecimalPlaces(4);
+        document.Accept(writer);
+
+        // Create the response
+        RestResponse response;
+        response.mData = buffer.GetString();
+        response.mContentType = rest::contenttypes::json;
+
+        return response;
+    }
+
+
+    bool FetchFlightsCall::getFlights(const nap::RestValueMap &values,
+                                      std::vector<FlightState> &filteredStates,
+                                      std::unordered_map<std::string, uint64> &timeStamps,
+                                      std::unordered_map<std::string, float> &distances,
+                                      utility::ErrorState &errorState)
+    {
         float lat, lon, altitude, radius;
         std::string begin, end, postal_code, streetnumber_and_premise;
-        utility::ErrorState error_state;
 
         // If postal_code is not provided, lat and lon should be provided
-        if(!extractValue("postal_code", values, postal_code, error_state))
+        if(!extractValue("postal_code", values, postal_code, errorState))
         {
-            if(!extractValue("lat", values, lat, error_state))
+            if(!extractValue("lat", values, lat, errorState))
             {
-                return utility::generateErrorResponse(error_state.toString());
+                return false;
             }
-            if(!extractValue("lon", values, lon, error_state))
+            if(!extractValue("lon", values, lon, errorState))
             {
-                return utility::generateErrorResponse(error_state.toString());
+                return false;
             }
         }else
         {
             // Get the streetnumber_and_premise
-            if(!extractValue("streetnumber_and_premise", values, streetnumber_and_premise, error_state))
+            if(!extractValue("streetnumber_and_premise", values, streetnumber_and_premise, errorState))
             {
-                return utility::generateErrorResponse(error_state.toString());
+                return false;
             }
 
             // All values required for pro6pp are present, but first check the cache if the address is present
@@ -81,14 +131,14 @@ namespace nap
             if(address_cache_table != nullptr)
             {
                 if(address_cache_table->query(utility::stringFormat("%s = '%s' AND %s = '%s'", "postalCode",
-                                                                 postal_code.c_str(),
-                                                                 "streetNumberAndPremise",
-                                                                 streetnumber_and_premise.c_str()),
-                                              objects, factory, error_state))
+                                                                    postal_code.c_str(),
+                                                                    "streetNumberAndPremise",
+                                                                    streetnumber_and_premise.c_str()),
+                                              objects, factory, errorState))
                 {
                     if(!objects.empty())
                     {
-                        auto valid_ts = DateTime(SystemClock::now() - std::chrono::hours(mAdressCacheRetentionDays * 24));
+                        auto valid_ts = DateTime(SystemClock::now() - std::chrono::hours(mAddressCacheRetentionDays * 24));
                         std::string valid_ts_format = utility::stringFormat("%d%02d%02d%02d%02d%02d",
                                                                             valid_ts.getYear(),
                                                                             valid_ts.getMonth(),
@@ -113,9 +163,9 @@ namespace nap
                             if(!address_cache_table->remove(utility::stringFormat("%s = '%s' AND %s = '%s'", "postalCode",
                                                                                   postal_code.c_str(),
                                                                                   "streetNumberAndPremise",
-                                                                                  streetnumber_and_premise.c_str()), error_state))
+                                                                                  streetnumber_and_premise.c_str()), errorState))
                             {
-                                nap::Logger::error(*this, "Failed to remove address cache data from the database : %s", error_state.toString().c_str());
+                                nap::Logger::error(*this, "Failed to remove address cache data from the database : %s", errorState.toString().c_str());
                             }
                         }
                     }
@@ -129,23 +179,23 @@ namespace nap
 
                 // Get the lat and lon from the pro6pp client
                 std::vector<std::unique_ptr<APIBaseValue>> pro6pp_values;
-                pro6pp_values.emplace_back(std::make_unique<APIValue<std::string>>(mPro6ppPostalCodeDescription, postal_code));
-                pro6pp_values.emplace_back(std::make_unique<APIValue<std::string>>(mPro6ppStreetNumberAndPremiseDescription, streetnumber_and_premise));
+                pro6pp_values.emplace_back(std::make_unique<APIValue<std::string>>(mPro6ppDescription->mPro6ppPostalCodeDescription, postal_code));
+                pro6pp_values.emplace_back(std::make_unique<APIValue<std::string>>(mPro6ppDescription->mPro6ppStreetNumberAndPremiseDescription, streetnumber_and_premise));
 
                 // try and get the pro6pp key from the file
                 std::string mPro6ppKey;
-                if(!utility::readFileToString(mPro6ppKeyFile, mPro6ppKey, error_state))
+                if(!utility::readFileToString(mPro6ppDescription->mPro6ppKeyFile, mPro6ppKey, errorState))
                 {
-                    return utility::generateErrorResponse(
-                            utility::stringFormat("Failed to read pro6pp key from file : %s", error_state.toString().c_str()));
+                    errorState.fail(utility::stringFormat("Failed to read pro6pp key from file : %s", errorState.toString().c_str()));
+                    return false;
                 }
 
-                pro6pp_values.emplace_back(std::make_unique<APIValue<std::string>>(mPro6ppAuthKeyDescription, mPro6ppKey));
+                pro6pp_values.emplace_back(std::make_unique<APIValue<std::string>>(mPro6ppDescription->mPro6ppAuthKeyDescription, mPro6ppKey));
                 RestResponse pro6pp_response;
-                if(!mPro6ppClient->getBlocking(mPro6ppAddress, pro6pp_values, pro6pp_response, error_state))
+                if(!mPro6ppClient->getBlocking(mPro6ppDescription->mPro6ppAddress, pro6pp_values, pro6pp_response, errorState))
                 {
-                    return utility::generateErrorResponse(
-                            utility::stringFormat("pro6pp error : %s", error_state.toString().c_str()));
+                    errorState.fail(utility::stringFormat("pro6pp error : %s", errorState.toString().c_str()));
+                    return false;
                 }
 
                 // try and parse the response
@@ -155,29 +205,29 @@ namespace nap
                 document.Parse(pro6pp_response.mData.c_str());
                 if(document.HasParseError())
                 {
-                    return utility::generateErrorResponse(
-                            "Failed to parse pro6pp response, document contents : " + pro6pp_response.mData);
+                    errorState.fail(utility::stringFormat("Failed to parse pro6pp response, document contents : %s", pro6pp_response.mData.c_str()));
+                    return false;
                 }
 
                 // finally, we can extract the lat and lon from the response, return error if they are not present
                 DEBUG_LOG(*this, "Parsed pro6pp response");
 
-                if(!document.HasMember(mPro6ppLatitudeDescription.c_str()) ||
-                   !document[mPro6ppLatitudeDescription.c_str()].IsFloat())
+                if(!document.HasMember(mPro6ppDescription->mPro6ppLatitudeDescription.c_str()) ||
+                   !document[mPro6ppDescription->mPro6ppLatitudeDescription.c_str()].IsFloat())
                 {
-                    return utility::generateErrorResponse(
-                            "Failed to parse pro6pp response, document contents : " + pro6pp_response.mData);
+                    errorState.fail(utility::stringFormat("Failed to parse pro6pp response, document contents : %s", pro6pp_response.mData.c_str()));
+                    return false;
                 }
-                if(!document.HasMember(mPro6ppLongitudeDescription.c_str()) ||
-                   !document[mPro6ppLongitudeDescription.c_str()].IsFloat())
+                if(!document.HasMember(mPro6ppDescription->mPro6ppLongitudeDescription.c_str()) ||
+                   !document[mPro6ppDescription->mPro6ppLongitudeDescription.c_str()].IsFloat())
                 {
-                    return utility::generateErrorResponse(
-                            "Failed to parse pro6pp response, document contents : " + pro6pp_response.mData);
+                    errorState.fail(utility::stringFormat("Failed to parse pro6pp response, document contents : %s", pro6pp_response.mData.c_str()));
+                    return false;
                 }
 
                 // done
-                lat = document[mPro6ppLatitudeDescription.c_str()].GetFloat();
-                lon = document[mPro6ppLongitudeDescription.c_str()].GetFloat();
+                lat = document[mPro6ppDescription->mPro6ppLatitudeDescription.c_str()].GetFloat();
+                lon = document[mPro6ppDescription->mPro6ppLongitudeDescription.c_str()].GetFloat();
 
                 // Save the lat and lon to the cache
                 if(address_cache_table != nullptr)
@@ -200,37 +250,34 @@ namespace nap
                     address_cache.mLon = lon;
                     address_cache.mTimeStamp = std::stoull(valid_ts_format);
 
-                    if(!address_cache_table->add(address_cache, error_state))
+                    if(!address_cache_table->add(address_cache, errorState))
                     {
-                        nap::Logger::error(*this, "Failed to add address cache data to the database : %s", error_state.toString().c_str());
+                        nap::Logger::error(*this, "Failed to add address cache data to the database : %s", errorState.toString().c_str());
                     }
                 }
             }
         }
 
-        if(!extractValue("altitude", values, altitude, error_state))
+        if(!extractValue("altitude", values, altitude, errorState))
         {
-            return utility::generateErrorResponse(error_state.toString());
+            return false;
         }
-        if(!extractValue("radius", values, radius, error_state))
+        if(!extractValue("radius", values, radius, errorState))
         {
-            return utility::generateErrorResponse(error_state.toString());
+            return false;
         }
-        if(!extractValue("begin", values, begin, error_state))
+        if(!extractValue("begin", values, begin, errorState))
         {
-            return utility::generateErrorResponse(error_state.toString());
+            return false;
         }
-        if(!extractValue("end", values, end, error_state))
+        if(!extractValue("end", values, end, errorState))
         {
-            return utility::generateErrorResponse(error_state.toString());
+            return false;
         }
 
         std::vector<std::unique_ptr<rtti::Object>> objects;
         rtti::Factory factory;
         std::unordered_map<std::string, std::string> callsigns_to_ignore;
-        std::vector<FlightState> filtered_states;
-        std::unordered_map<std::string, uint64> timestamps;
-        std::unordered_map<std::string, float> distances;
 
         // Determine how many states we need to fetch from the database and cache
         uint64 begin_timestamp_db = std::stoull(begin);
@@ -266,7 +313,7 @@ namespace nap
                                                            std::to_string(begin_timestamp_db).c_str(),
                                                            "TimeStamp",
                                                            std::to_string(end_timestamp_db).c_str()),
-                                     objects, factory, error_state))
+                                     objects, factory, errorState))
             {
                 // Iterate over all the objects
                 for(auto& object : objects)
@@ -278,7 +325,7 @@ namespace nap
                     std::vector<FlightState> states;
 
                     // Parse the data
-                    if(data->ParseData(states, altitude, error_state))
+                    if(data->ParseData(states, altitude, errorState))
                     {
                         for(const auto& state : states)
                         {
@@ -290,15 +337,15 @@ namespace nap
                             double distance = calcGPSDistance(lat, lon, state.mLatitude, state.mLongitude);
                             if(distance < radius)
                             {
-                                filtered_states.push_back(state);
+                                filteredStates.push_back(state);
                                 callsigns_to_ignore[state.mICAO] = state.mICAO;
-                                timestamps[state.mICAO] = data->mTimeStamp;
+                                timeStamps[state.mICAO] = data->mTimeStamp;
                                 distances[state.mICAO] = distance;
                             }
                         }
                     }else
                     {
-                        return utility::generateErrorResponse(error_state.toString());
+                        return false;
                     }
                 }
             }
@@ -321,9 +368,9 @@ namespace nap
                         double distance = calcGPSDistance(lat, lon, flight.mLatitude, flight.mLongitude);
                         if(distance < radius)
                         {
-                            filtered_states.push_back(flight);
+                            filteredStates.push_back(flight);
                             callsigns_to_ignore[flight.mICAO] = flight.mICAO;
-                            timestamps[flight.mICAO] = state.mTimeStamp;
+                            timeStamps[flight.mICAO] = state.mTimeStamp;
                             distances[flight.mICAO] = distance;
                         }
                     }
@@ -332,46 +379,9 @@ namespace nap
         }
 
         DEBUG_LOG(*this, "Got %d states from database and %d states from cache", objects.size(), states.size());
-        DEBUG_LOG(*this, "Filtered %d states", filtered_states.size());
+        DEBUG_LOG(*this, "Filtered %d states", filteredStates.size());
 
-        // Create the json document
-        rapidjson::Document document(rapidjson::kObjectType);
-        rapidjson::Value data(rapidjson::kObjectType);
-        document.AddMember("status", "ok", document.GetAllocator());
-
-        // Add found flights to the response
-        rapidjson::Value flights(rapidjson::kArrayType);
-        for(const auto& state : filtered_states)
-        {
-            rapidjson::Value flight(rapidjson::kObjectType);
-            flight.AddMember("icao", rapidjson::Value(state.mICAO.c_str(), document.GetAllocator()), document.GetAllocator());
-            flight.AddMember("reg", rapidjson::Value(state.mRegistration.c_str(), document.GetAllocator()), document.GetAllocator());
-            flight.AddMember("aircraft_type", rapidjson::Value(state.mAircraftType.c_str(), document.GetAllocator()), document.GetAllocator());
-            flight.AddMember("lat", state.mLatitude, document.GetAllocator());
-            flight.AddMember("lon", state.mLongitude, document.GetAllocator());
-            flight.AddMember("altitude", state.mAltitude, document.GetAllocator());
-            flight.AddMember("timestamp", timestamps[state.mICAO], document.GetAllocator());
-            flight.AddMember("distance", distances[state.mICAO], document.GetAllocator());
-
-            flights.PushBack(flight, document.GetAllocator());
-        }
-        data.AddMember("flights", flights, document.GetAllocator());
-        data.AddMember("ms", timer.getMillis().count(), document.GetAllocator());
-        data.AddMember("states", objects.size() + states.size(), document.GetAllocator());
-        document.AddMember("data", data, document.GetAllocator());
-
-        // Serialize the response
-        rapidjson::StringBuffer buffer;
-        rapidjson::PrettyWriter<rapidjson::StringBuffer> writer(buffer);
-        writer.SetMaxDecimalPlaces(4);
-        document.Accept(writer);
-
-        // Create the response
-        RestResponse response;
-        response.mData = buffer.GetString();
-        response.mContentType = rest::contenttypes::json;
-
-        return response;
+        return true;
     }
 
 

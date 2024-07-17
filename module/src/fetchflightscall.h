@@ -7,32 +7,40 @@
 
 #include "statescache.h"
 #include "flightstate.h"
-
+#include "pro6ppdescription.h"
 
 namespace nap
 {
-    class NAPAPI FetchFlightsCall : public RestFunction
+    class NAPAPI Pro6ppInterface : public RestFunction
     {
-    RTTI_ENABLE(RestFunction)
+        RTTI_ENABLE(RestFunction)
     public:
-        bool init(utility::ErrorState &errorState) override;
+        ResourcePtr<Pro6ppDescription> mPro6ppDescription;
+        ResourcePtr<RestClient> mPro6ppClient;
+    };
 
-        RestResponse call(const std::unordered_map<std::string, std::unique_ptr<APIBaseValue>> &values) override;
+
+    class NAPAPI FetchFlightsCall : public Pro6ppInterface
+    {
+    RTTI_ENABLE(Pro6ppInterface)
+    public:
+        bool init(utility::ErrorState &errorState) final;
+
+        RestResponse call(const RestValueMap &values) override;
 
         ResourcePtr<DatabaseTableResource> mFlightStatesDatabase;
         ResourcePtr<StatesCache> mStatesCache;
-        ResourcePtr<RestClient> mPro6ppClient;
-        int mAdressCacheRetentionDays = 180;
+        int mAddressCacheRetentionDays = 180;
+        ResourcePtr<Pro6ppDescription> mPro6ppDescription;
         std::string mFlightStatesTableName = "states";
         std::string mAddressCacheTableName = "addressCache";
-        std::string mPro6ppAddress = "https://api.pro6pp.nl/v1/autocomplete";
-        std::string mPro6ppKeyFile = "pro6pp.key";
-        std::string mPro6ppPostalCodeDescription = "postalCode";
-        std::string mPro6ppStreetNumberAndPremiseDescription = "streetNumberAndPremise";
-        std::string mPro6ppAuthKeyDescription = "authKey";
-        std::string mPro6ppLatitudeDescription = "lat";
-        std::string mPro6ppLongitudeDescription = "lng";
-    private:
+
+        bool getFlights(const RestValueMap &values,
+                        std::vector<FlightState> &filteredStates,
+                        std::unordered_map<std::string, uint64> &timeStamps,
+                        std::unordered_map<std::string, float> &distances,
+                        utility::ErrorState& errorState);
+    protected:
         DatabaseTable* mDatabaseTable;
     };
 }

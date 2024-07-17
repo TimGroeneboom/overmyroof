@@ -1,0 +1,252 @@
+{
+    "Objects": [
+        {
+            "Type": "nap::DatabaseTableResource",
+            "mID": "FlightStatesDatabase",
+            "DatabaseName": "flights_2.db"
+        },
+        {
+            "Type": "nap::Entity",
+            "mID": "PlaneLoggerEntity",
+            "Components": [
+                {
+                    "Type": "nap::PlaneLoggerComponent",
+                    "mID": "PlaneLoggerComponent",
+                    "RestClient": "RestClient",
+                    "Interval": 10.0,
+                    "FlightStatesDatabase": "FlightStatesDatabase",
+                    "StatesCache": "StatesCache",
+                    "RetainHours": 768,
+                    "CacheHours": 24,
+                    "Adress": "/zones/fcgi/feed.js",
+                    "Bounds": {
+                        "x": 53.445884704589847,
+                        "y": 50.74940490722656,
+                        "z": 3.516303300857544,
+                        "w": 7.913614749908447
+                    }
+                }
+            ],
+            "Children": []
+        },
+        {
+            "Type": "nap::FetchFlightsCall",
+            "mID": "FetchFlightsCall",
+            "Address": "find_flights",
+            "ValueDescriptions": [
+                {
+                    "Type": "nap::RestValueFloat",
+                    "mID": "latitude",
+                    "Name": "lat",
+                    "Required": false
+                },
+                {
+                    "Type": "nap::RestValueFloat",
+                    "mID": "longitude",
+                    "Name": "lon",
+                    "Required": false
+                },
+                {
+                    "Type": "nap::RestValueFloat",
+                    "mID": "altitude",
+                    "Name": "altitude",
+                    "Required": true
+                },
+                {
+                    "Type": "nap::RestValueFloat",
+                    "mID": "radius",
+                    "Name": "radius",
+                    "Required": true
+                },
+                {
+                    "Type": "nap::RestValueString",
+                    "mID": "begin_timestamp",
+                    "Name": "begin",
+                    "Required": true
+                },
+                {
+                    "Type": "nap::RestValueString",
+                    "mID": "end_timestamp",
+                    "Name": "end",
+                    "Required": true
+                },
+                {
+                    "Type": "nap::RestValueString",
+                    "mID": "postal_code",
+                    "Name": "postal_code",
+                    "Required": false
+                },
+                {
+                    "Type": "nap::RestValueString",
+                    "mID": "streetnumber_and_premise",
+                    "Name": "streetnumber_and_premise",
+                    "Required": false
+                }
+            ],
+            "Pro6ppClient": {
+                "Type": "nap::RestClient",
+                "mID": "RestClient_da0e42",
+                "URL": "https://api.pro6pp.nl",
+                "CertificatePath": "/etc/ssl/certs",
+                "ArraySeparator": ",",
+                "Headers": [
+                    {
+                        "Key": "User-Agent",
+                        "Value": "NAP/1.0"
+                    }
+                ]
+            },
+            "Pro6ppDescription": "Pro6ppDescription",
+            "FlightStatesDatabase": "FlightStatesDatabase",
+            "StatesCache": "StatesCache",
+            "FlightStatesTableName": "states",
+            "AddressCacheRetentionDays": 180
+        },
+        {
+            "Type": "nap::FindDisturbancesCall",
+            "mID": "FindDisturbancesCall",
+            "Address": "find_disturbances",
+            "ValueDescriptions": [
+                {
+                    "Type": "nap::RestValueInt",
+                    "mID": "period",
+                    "Name": "period",
+                    "Required": true
+                },
+                {
+                    "Type": "nap::RestValueInt",
+                    "mID": "occurrences",
+                    "Name": "occurrences",
+                    "Required": true
+                },
+                {
+                    "Type": "nap::RestValueFloat",
+                    "mID": "latitude2",
+                    "Name": "lat",
+                    "Required": false
+                },
+                {
+                    "Type": "nap::RestValueFloat",
+                    "mID": "longitude2",
+                    "Name": "lon",
+                    "Required": false
+                },
+                {
+                    "Type": "nap::RestValueFloat",
+                    "mID": "altitude2",
+                    "Name": "altitude",
+                    "Required": true
+                },
+                {
+                    "Type": "nap::RestValueFloat",
+                    "mID": "radius2",
+                    "Name": "radius",
+                    "Required": true
+                },
+                {
+                    "Type": "nap::RestValueString",
+                    "mID": "begin_timestamp2",
+                    "Name": "begin",
+                    "Required": true
+                },
+                {
+                    "Type": "nap::RestValueString",
+                    "mID": "end_timestamp2",
+                    "Name": "end",
+                    "Required": true
+                },
+                {
+                    "Type": "nap::RestValueString",
+                    "mID": "postal_code2",
+                    "Name": "postal_code",
+                    "Required": false
+                },
+                {
+                    "Type": "nap::RestValueString",
+                    "mID": "streetnumber_and_premise2",
+                    "Name": "streetnumber_and_premise",
+                    "Required": false
+                }
+            ],
+            "FetchFlightsCall": "FetchFlightsCall"
+        },
+        {
+            "Type": "nap::Pro6ppDescription",
+            "mID": "Pro6ppDescription",
+            "Pro6ppAddress": "/v2/autocomplete/nl",
+            "Pro6ppKeyFile": "pro6pp.key",
+            "Pro6ppPostalCodeDescription": "postalCode",
+            "Pro6ppStreetNumberAndPremiseDescription": "streetNumberAndPremise",
+            "Pro6ppAuthKeyDescription": "authKey",
+            "Pro6ppLatitudeDescription": "lat",
+            "Pro6ppLongitudeDescription": "lng"
+        },
+        {
+            "Type": "nap::RestClient",
+            "mID": "RestClient",
+            "URL": "https://data-cloud.flightradar24.com",
+            "CertificatePath": "/etc/ssl/certs",
+            "ArraySeparator": ",",
+            "Headers": [
+                {
+                    "Key": "User-Agent",
+                    "Value": "NAP/1.0"
+                }
+            ]
+        },
+        {
+            "Type": "nap::RestEchoFunction",
+            "mID": "RestEchoFunction",
+            "Address": "echo",
+            "ValueDescriptions": [
+                {
+                    "Type": "nap::RestValueString",
+                    "mID": "RestValueString",
+                    "Name": "mystring",
+                    "Required": false
+                },
+                {
+                    "Type": "nap::RestValueInt",
+                    "mID": "RestValueInt",
+                    "Name": "myint",
+                    "Required": false
+                },
+                {
+                    "Type": "nap::RestValueFloat",
+                    "mID": "RestValueFloat",
+                    "Name": "myfloat",
+                    "Required": false
+                }
+            ]
+        },
+        {
+            "Type": "nap::RestServer",
+            "mID": "RestServer",
+            "Functions": [
+                "RestEchoFunction",
+                "FetchFlightsCall",
+                "FindDisturbancesCall"
+            ],
+            "Port": 8080,
+            "Host": "0.0.0.0",
+            "Verbose": false,
+            "MaxRequests": 500,
+            "MaxConcurrentRequests": 2
+        },
+        {
+            "Type": "nap::Scene",
+            "mID": "Scene",
+            "Entities": [
+                {
+                    "Entity": "PlaneLoggerEntity",
+                    "InstanceProperties": []
+                }
+            ]
+        },
+        {
+            "Type": "nap::StatesCache",
+            "mID": "StatesCache",
+            "MaxEntries": 8640
+        }
+    ]
+}
