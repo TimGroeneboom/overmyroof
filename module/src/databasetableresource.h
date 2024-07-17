@@ -7,7 +7,6 @@
 
 namespace nap
 {
-    template<typename T>
     class NAPAPI DatabaseTableResource : public Resource
     {
     RTTI_ENABLE(Resource)
@@ -20,24 +19,33 @@ namespace nap
                 return false;
             }
 
-            mDatabaseTable = mDatabase->getOrCreateTable(mTableName, RTTI_OF(T), {}, errorState);
-            if(mDatabaseTable == nullptr)
-            {
-                return false;
-            }
-
             return true;
         }
 
         std::string mDatabaseName = "test.db";
-        std::string mTableName = "test";
 
-        DatabaseTable* getDatabaseTable() { return mDatabaseTable; }
+        template<typename T>
+        DatabaseTable* getDatabaseTable(const std::string& tableName);
     private:
         std::unique_ptr<Database> mDatabase;
-        DatabaseTable* mDatabaseTable = nullptr;
         rtti::Factory mDatabaseFactory;
+        std::unordered_map<std::string, DatabaseTable*> mTables;
     };
+
+    template<typename T>
+    DatabaseTable* DatabaseTableResource::getDatabaseTable(const std::string& tableName)
+    {
+        auto it = mTables.find(tableName);
+        if(it != mTables.end())
+        {
+            return it->second;
+        }
+
+        utility::ErrorState error_state;
+        DatabaseTable* table = mDatabase->getOrCreateTable(tableName, RTTI_OF(T), {}, error_state);
+        mTables[tableName] = table;
+        return table;
+    }
 }
 
 

@@ -21,15 +21,33 @@ namespace nap
     }
 
 
-    bool StatesCache::getStates(uint64 begin, uint64 end, std::vector<FlightStates>& states)
+    bool StatesCache::getStates(uint64 begin, uint64 end, float altitude, std::vector<FlightStates>& states)
     {
-        std::lock_guard<std::mutex> lock(mMutex);
-        auto it = mStates.lower_bound(begin);
-        while(it != mStates.end() && it->first <= end)
         {
-            states.push_back(it->second);
-            ++it;
+            std::lock_guard<std::mutex> lock(mMutex);
+            auto it = mStates.lower_bound(begin);
+            while(it != mStates.end() && it->first <= end)
+            {
+                states.push_back(it->second);
+                ++it;
+            }
         }
+
+        if(altitude <= 0)
+        {
+            return true;
+        }
+
+        for(auto& state : states)
+        {
+            // remove all flight below the altitude
+            auto itr = std::find_if(state.mStates.begin(), state.mStates.end(), [altitude](const FlightState& flight){ return flight.mAltitude > altitude; });
+            if(itr != state.mStates.end())
+            {
+                state.mStates.erase(itr, state.mStates.end());
+            }
+        }
+
         return true;
     }
 

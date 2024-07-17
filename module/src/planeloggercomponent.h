@@ -25,8 +25,9 @@ namespace nap
         DECLARE_COMPONENT(PlaneLoggerComponent, PlaneLoggerComponentInstance)
     public:
         ResourcePtr<RestClient> mRestClient;
-        ResourcePtr<FlightStatesTable> mFlightStatesTable;
+        ResourcePtr<DatabaseTableResource> mFlightStatesDatabase;
         ResourcePtr<StatesCache> mStatesCache;
+        std::string mFlightStatesTableName = "states";
         float mInterval = 10.0f;
         int mRetainHours = 768;
         int mCacheHours = 24;
@@ -54,6 +55,7 @@ namespace nap
         double mTime = 0.0;
         int mRetainHours = 768;
         int mCacheHours = 24;
+        std::string mFlightStatesTableName = "states";
         std::string mAddress = "/zones/fcgi/feed.js";
         glm::vec4 mBounds = {53.445884435606054, 50.749405057563486, 3.5163031843031223, 7.9136148705580505};
     };

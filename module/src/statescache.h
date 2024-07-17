@@ -37,10 +37,11 @@ namespace nap
          * Get states from the cache between begin and end, thread safe
          * @param begin the begin timestamp in uint64 YYYYMMDDHHMMSS
          * @param end the end timestamp in uint64 YYYYMMDDHHMMSS
+         * @param altitude the maximum altitude of the states
          * @param states vector to store the states in
          * @return true if states were found
          */
-        bool getStates(uint64 begin, uint64 end, std::vector<FlightStates>& states);
+        bool getStates(uint64 begin, uint64 end, float altitude, std::vector<FlightStates>& states);
 
         /**
          * Get the most recent timestamp in the cache

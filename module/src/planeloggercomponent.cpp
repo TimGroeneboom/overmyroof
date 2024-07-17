@@ -9,7 +9,7 @@
 RTTI_BEGIN_CLASS(nap::PlaneLoggerComponent)
     RTTI_PROPERTY("RestClient", &nap::PlaneLoggerComponent::mRestClient, nap::rtti::EPropertyMetaData::Required)
     RTTI_PROPERTY("Interval", &nap::PlaneLoggerComponent::mInterval, nap::rtti::EPropertyMetaData::Default)
-    RTTI_PROPERTY("FlightStatesTable", &nap::PlaneLoggerComponent::mFlightStatesTable, nap::rtti::EPropertyMetaData::Required)
+    RTTI_PROPERTY("FlightStatesDatabase", &nap::PlaneLoggerComponent::mFlightStatesDatabase, nap::rtti::EPropertyMetaData::Required)
     RTTI_PROPERTY("StatesCache", &nap::PlaneLoggerComponent::mStatesCache, nap::rtti::EPropertyMetaData::Required)
     RTTI_PROPERTY("RetainHours", &nap::PlaneLoggerComponent::mRetainHours, nap::rtti::EPropertyMetaData::Default)
     RTTI_PROPERTY("CacheHours", &nap::PlaneLoggerComponent::mCacheHours, nap::rtti::EPropertyMetaData::Default)
@@ -33,7 +33,8 @@ namespace nap
         auto* resource = getComponent<PlaneLoggerComponent>();
         mRestClient = resource->mRestClient.get();
         mInterval = resource->mInterval;
-        mFlightStatesTable = resource->mFlightStatesTable->getDatabaseTable();
+        mFlightStatesTableName = resource->mFlightStatesTableName;
+        mFlightStatesTable = resource->mFlightStatesDatabase->getDatabaseTable<FlightStatesData>(mFlightStatesTableName);
         mStatesCache = resource->mStatesCache.get();
         mRetainHours = resource->mRetainHours;
         mCacheHours = resource->mCacheHours;
@@ -71,7 +72,7 @@ namespace nap
                 std::vector<FlightState> states;
 
                 // Parse the data
-                if(data->ParseData(states, e))
+                if(data->ParseData(states, -1, e))
                 {
                     // sort by altitude
                     std::sort(states.begin(), states.end(), [](const FlightState& a, const FlightState& b)

@@ -27,8 +27,6 @@ namespace nap
         std::string mData;
         nap::uint64 mTimeStamp;
 
-        bool ParseData(std::vector<FlightState>& states, utility::ErrorState& errorState);
+        bool ParseData(std::vector<FlightState>& states, float altitude, utility::ErrorState& errorState) const;
     };
-
-    using FlightStatesTable = DatabaseTableResource<FlightStatesData>;
 }
