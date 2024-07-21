@@ -10,6 +10,7 @@
 #include "addresscachedata.h"
 
 #include <math.h>
+#include "utils.h"
 
 RTTI_BEGIN_CLASS_NO_DEFAULT_CONSTRUCTOR(nap::Pro6ppInterface)
     RTTI_PROPERTY("Pro6ppClient", &nap::FetchFlightsCall::mPro6ppClient, nap::rtti::EPropertyMetaData::Required | nap::rtti::EPropertyMetaData::Embedded)
@@ -21,6 +22,7 @@ RTTI_BEGIN_CLASS(nap::FetchFlightsCall)
     RTTI_PROPERTY("StatesCache", &nap::FetchFlightsCall::mStatesCache, nap::rtti::EPropertyMetaData::Required)
     RTTI_PROPERTY("FlightStatesTableName", &nap::FetchFlightsCall::mFlightStatesTableName, nap::rtti::EPropertyMetaData::Default)
     RTTI_PROPERTY("AddressCacheRetentionDays", &nap::FetchFlightsCall::mAddressCacheRetentionDays, nap::rtti::EPropertyMetaData::Default)
+    RTTI_PROPERTY("MaxDurationHours", &nap::FetchFlightsCall::mMaxDurationHours, nap::rtti::EPropertyMetaData::Default)
 RTTI_END_CLASS
 
 #define ENABLE_DEBUG_LOG 0
@@ -105,14 +107,17 @@ namespace nap
         std::string begin, end, postal_code, streetnumber_and_premise;
 
         // If postal_code is not provided, lat and lon should be provided
-        if(!extractValue("postal_code", values, postal_code, errorState))
+        utility::ErrorState error_state_2;
+        if(!extractValue("postal_code", values, postal_code, error_state_2))
         {
             if(!extractValue("lat", values, lat, errorState))
             {
+                errorState.fail("No postal code or latitude provided");
                 return false;
             }
             if(!extractValue("lon", values, lon, errorState))
             {
+                errorState.fail("No postal code or lon provided");
                 return false;
             }
         }else
@@ -286,6 +291,21 @@ namespace nap
         uint64 end_timestamp_cache = mStatesCache->getMostRecentTimeStamp();
         bool ignore_cache = false;
         bool ignore_database = false;
+
+        // check if end and begin are smaller than allowed period
+        DateTime begin_dt;
+        if(!utility::dateTimeFromUINT64(begin_timestamp_db, begin_dt, errorState))
+            return false;
+
+        DateTime end_dt;
+        if(!utility::dateTimeFromUINT64(end_timestamp_db, end_dt, errorState))
+            return false;
+
+        // check if the duration is smaller than the allowed period
+        std::chrono::hours max_duration(mMaxDurationHours);
+        if(!errorState.check(std::chrono::duration_cast<std::chrono::hours>(end_dt.getTimeStamp() - begin_dt.getTimeStamp()) <= max_duration,
+                             utility::stringFormat("Duration exceeds maximum duration of %d hours", mMaxDurationHours)))
+            return false;
 
         // Completely ignore the cache if timestamps are not overlapping with the cache
         if(begin_timestamp_db < begin_timestamp_cache && end_timestamp_db < begin_timestamp_cache)

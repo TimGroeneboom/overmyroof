@@ -6,10 +6,12 @@
 #include "rapidjson/stringbuffer.h"
 #include "rapidjson/prettywriter.h"
 #include <nap/datetime.h>
-#include <iomanip>
+#include "utils.h"
 
 RTTI_BEGIN_CLASS(nap::FindDisturbancesCall)
-RTTI_PROPERTY("FetchFlightsCall", &nap::FindDisturbancesCall::mFetchFlightsCall, nap::rtti::EPropertyMetaData::Required)
+RTTI_PROPERTY("FetchFlightsCall", &nap::FindDisturbancesCall::mFetchFlightsCall, nap::rtti::EPropertyMetaData::Required, "Reference to the fetch flights call")
+RTTI_PROPERTY("MaxPeriod", &nap::FindDisturbancesCall::mMaxPeriod, nap::rtti::EPropertyMetaData::Default, "Maximum period in minutes to search for disturbances")
+RTTI_PROPERTY("MinPeriod", &nap::FindDisturbancesCall::mMinPeriod, nap::rtti::EPropertyMetaData::Default, "Minimum period in minutes to search for disturbances")
 RTTI_END_CLASS
 
 #define ENABLE_DEBUG_LOG 0
@@ -21,16 +23,17 @@ RTTI_END_CLASS
 
 namespace nap
 {
-    static bool dateTimeFromUINT64(uint64 timestamp, DateTime& dt, utility::ErrorState errorState);
-
+    /**
+     * Structure to hold a disturbance period
+     */
     struct DisturbancePeriod
     {
     public:
-        uint64 mBegin;
-        uint64 mEnd;
-        std::vector<FlightState> mStates;
-        std::unordered_map<std::string, uint64> mTimestamps;
-        int mOccurrences;
+        uint64 mBegin; ///< Begin timestamp of the disturbance period
+        uint64 mEnd; ///< End timestamp of the disturbance period
+        std::vector<FlightState> mStates; ///< List of flight states in the disturbance period
+        std::unordered_map<std::string, uint64> mTimestamps; ///< Timestamps of the flight states in the disturbance period
+        int mOccurrences; ///< Number of occurrences in the disturbance period
     };
 
     bool FindDisturbancesCall::init(utility::ErrorState &errorState)
@@ -41,6 +44,7 @@ namespace nap
 
     RestResponse FindDisturbancesCall::call(const RestValueMap &values)
     {
+        // start time to measure the time it takes to execute the call
         SteadyTimer timer;
         timer.start();
 
@@ -56,8 +60,10 @@ namespace nap
 
         if(!extractValue("period", values, period, error_state))
             return utility::generateErrorResponse(error_state.toString());
-        if(period < 1)
-            return utility::generateErrorResponse("period must be greater than 0 minutes");
+        if(period < mMinPeriod)
+            return utility::generateErrorResponse(utility::stringFormat("period must be greater than %d minutes", mMinPeriod));
+        if(period > mMaxPeriod)
+            return utility::generateErrorResponse(utility::stringFormat("period must be less than %d minutes", mMaxPeriod));
 
         // Get states from referenced fetch flights call
         std::vector<FlightState> filtered_states;
@@ -71,15 +77,22 @@ namespace nap
         // sort states by timestamp
         std::sort(filtered_states.begin(), filtered_states.end(), [&timestamps](const FlightState& a, const FlightState& b) { return timestamps[a.mICAO] < timestamps[b.mICAO]; });
 
-        int in_period_count = 0;
-        int disturbances_count = 0;
-        bool currently_in_period = false;
-        uint64 begin_current_period;
-        uint64 end_current_period;
-        DisturbancePeriod disturbance_period;
-        std::vector<DisturbancePeriod> disturbance_periods;
-        std::vector<FlightState> disturbance_states;
-        std::unordered_map<std::string, uint64> disturbance_timestamps;
+        // begin collecting disturbance periods
+        int in_period_count = 0; // count of flights in the period
+        int disturbances_count = 0; // count of total disturbances in a period
+        bool currently_in_period = false; // are we currently in a disturbance period
+        uint64 begin_current_period; // timestamp of the beginning of the current period
+        uint64 end_current_period; // timestamp of the end of the current period
+        DisturbancePeriod disturbance_period; // current disturbance period
+        std::vector<DisturbancePeriod> disturbance_periods; // list of found disturbance periods
+        std::vector<FlightState> disturbance_states; // list of flight states in the current disturbance period
+        std::unordered_map<std::string, uint64> disturbance_timestamps; // timestamps of the flight states in the current disturbance period
+
+        // iterate over the flight, comparing the time difference between each flight state.
+        // all flight states are already filtered by altitude
+        // if the time difference is less than the period, we are in a (potential) disturbance period
+        // if we are in a potential disturbance period, we need to check if we have enough occurrences to register the period
+
         for(int i = 1; i < filtered_states.size(); i++)
         {
             const FlightState& state1 = filtered_states[i - 1];
@@ -87,11 +100,11 @@ namespace nap
 
             // Calculate time difference
             DateTime dt_1;
-            if(!dateTimeFromUINT64(timestamps[state1.mICAO], dt_1, error_state))
+            if(!utility::dateTimeFromUINT64(timestamps[state1.mICAO], dt_1, error_state))
                 return utility::generateErrorResponse(error_state.toString());
 
             DateTime dt_2;
-            if(!dateTimeFromUINT64(timestamps[state2.mICAO], dt_2, error_state))
+            if(!utility::dateTimeFromUINT64(timestamps[state2.mICAO], dt_2, error_state))
                 return utility::generateErrorResponse(error_state.toString());
 
             // if the time difference is less than the period, we are in a (potential) disturbance period
@@ -124,7 +137,7 @@ namespace nap
                     in_period_count = 0;
                     end_current_period = timestamps[state2.mICAO];
                 }
-            }else if(currently_in_period && in_period_count < occurrences)
+            }else if(currently_in_period)
             {
                 // if we are in a disturbance period, but we don't have enough occurrences, we need to check if we should register the period
 
@@ -146,6 +159,15 @@ namespace nap
                     disturbance_states.clear();
                     disturbance_timestamps.clear();
                 }
+            }else
+            {
+                // discard the period
+                register_period = false;
+                currently_in_period = false;
+                in_period_count = 0;
+                disturbances_count = 0;
+                disturbance_states.clear();
+                disturbance_timestamps.clear();
             }
 
             if(register_period)
@@ -170,6 +192,8 @@ namespace nap
             }
         }
 
+        // we reached the end of the list, check if we are in a disturbance period
+        // register the period if we have enough occurrences
         if(currently_in_period && disturbances_count >= occurrences)
         {
             DEBUG_LOG(*this, "%i flights detected in period from %ld to %ld",
@@ -238,19 +262,5 @@ namespace nap
         response.mContentType = rest::contenttypes::json;
 
         return response;
-    }
-
-    bool dateTimeFromUINT64(uint64 timestamp, DateTime& dt, utility::ErrorState errorState)
-    {
-        std::tm t{};
-        std::istringstream ss(std::to_string(timestamp));
-
-        ss >> std::get_time(&t, "%Y%m%d%H%M%S");
-        if(!errorState.check(!ss.fail(), "failed to parse time string"))
-            return false;
-
-        dt = DateTime(std::chrono::system_clock::from_time_t(mktime(&t)));
-
-        return true;
     }
 }

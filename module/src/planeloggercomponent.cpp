@@ -102,10 +102,17 @@ namespace nap
 
     void PlaneLoggerComponentInstance::update(double deltaTime)
     {
+        if(mQuerying)
+            return;
+
         mTime += deltaTime;
         if(mTime > mInterval)
         {
+            mQuerying = true;
+
             mTime = 0.0;
+
+            nap::Logger::info(*this, "Getting flight states from url %s address %s", mRestClient->mURL.c_str(), mAddress.c_str());
 
             std::vector<std::unique_ptr<APIBaseValue>> params;
             params.emplace_back(std::make_unique<APIValue<int>>("faa", 1));
@@ -332,9 +339,12 @@ namespace nap
                 {
                     nap::Logger::error(*this, "Error removing old entries : %s", err.toString().c_str());
                 }
+
+                mQuerying = false;
             }, [this](const utility::ErrorState& error)
             {
                 nap::Logger::error(*this, "Error getting flight states : %s", error.toString().c_str());
+                mQuerying = false;
             });
         }
     }

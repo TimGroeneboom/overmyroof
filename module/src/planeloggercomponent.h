@@ -56,6 +56,7 @@ namespace nap
         int mRetainHours = 768;
         int mCacheHours = 24;
         std::string mFlightStatesTableName = "states";
+        bool mQuerying = false;
         std::string mAddress = "/zones/fcgi/feed.js";
         glm::vec4 mBounds = {53.445884435606054, 50.749405057563486, 3.5163031843031223, 7.9136148705580505};
     };

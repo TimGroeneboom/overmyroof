@@ -18,6 +18,8 @@ namespace nap
         RestResponse call(const RestValueMap &values) override;
 
         ResourcePtr<FetchFlightsCall> mFetchFlightsCall;
+        int mMaxPeriod = 2880; ///< Property "MaxPeriod" : Maximum period in minutes to search for disturbances
+        int mMinPeriod = 10; ///< Property "MinPeriod" : Minimum period in minutes to search for disturbances
     private:
 
     };

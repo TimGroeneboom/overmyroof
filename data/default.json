@@ -3,7 +3,7 @@
         {
             "Type": "nap::DatabaseTableResource",
             "mID": "FlightStatesDatabase",
-            "DatabaseName": "flights_2.db"
+            "DatabaseName": "flights3.db"
         },
         {
             "Type": "nap::Entity",
@@ -94,13 +94,15 @@
                         "Key": "User-Agent",
                         "Value": "NAP/1.0"
                     }
-                ]
+                ],
+                "Timeout": 3
             },
             "Pro6ppDescription": "Pro6ppDescription",
             "FlightStatesDatabase": "FlightStatesDatabase",
             "StatesCache": "StatesCache",
             "FlightStatesTableName": "states",
-            "AddressCacheRetentionDays": 180
+            "AddressCacheRetentionDays": 180,
+            "MaxDurationHours": 24
         },
         {
             "Type": "nap::FindDisturbancesCall",
@@ -168,7 +170,9 @@
                     "Required": false
                 }
             ],
-            "FetchFlightsCall": "FetchFlightsCall"
+            "FetchFlightsCall": "FetchFlightsCall",
+            "MaxPeriod": 2880,
+            "MinPeriod": 10
         },
         {
             "Type": "nap::Pro6ppDescription",
@@ -192,7 +196,8 @@
                     "Key": "User-Agent",
                     "Value": "NAP/1.0"
                 }
-            ]
+            ],
+            "Timeout": 1
         },
         {
             "Type": "nap::RestEchoFunction",
