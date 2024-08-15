@@ -27,6 +27,13 @@ namespace nap
     RTTI_ENABLE(Resource)
     public:
         /**
+         * Initialize the cache
+         * @param errorState the error state to store errors in
+         * @return true if the cache was initialized
+         */
+        bool init(utility::ErrorState &errorState) final;
+
+        /**
          * Add states to the cache, thread safe
          * @param timestamp the timestamp of the states in uint64 YYYYMMDDHHMMSS
          * @param states all states

@@ -21,6 +21,13 @@ RTTI_BEGIN_CLASS_NO_DEFAULT_CONSTRUCTOR(nap::PlaneLoggerComponentInstance)
 RTTI_CONSTRUCTOR(nap::EntityInstance&, nap::Component&)
 RTTI_END_CLASS
 
+#define ENABLE_DEBUG_LOG 0
+#if ENABLE_DEBUG_LOG
+#define DEBUG_LOG(...) nap::Logger::info(__VA_ARGS__)
+#else
+#define DEBUG_LOG(...)
+#endif
+
 namespace nap
 {
     PlaneLoggerComponentInstance::PlaneLoggerComponentInstance(nap::EntityInstance &entityInstance, nap::Component &component)
@@ -44,22 +51,27 @@ namespace nap
         mTime = mInterval;
 
         // Fill cache with data from the last cache hours
-        nap::Logger::info(*this, "Filling cache with data from the last 24 hours");
+        nap::Logger::info(*this, "Filling cache with data from the last %d hours", mCacheHours);
         auto now = getCurrentDateTime();
-        std::string now_format = utility::stringFormat("%d%02d%02d%02d%02d%02d", now.getYear(), now.getMonth(), now.getDayInTheMonth(), now.getHour(), now.getMinute(), now.getSecond());
+        std::string now_format = utility::stringFormat("%d%02d%02d%02d%02d%02d",
+                                                       now.getYear(), now.getMonth(), now.getDayInTheMonth(),
+                                                       now.getHour(), now.getMinute(), now.getSecond());
         uint64 now_uint64 = std::stoull(now_format);
 
         auto yes = DateTime(SystemClock::now() - std::chrono::hours(mCacheHours));
-        std::string yes_format = utility::stringFormat("%d%02d%02d%02d%02d%02d", yes.getYear(), yes.getMonth(), yes.getDayInTheMonth(), yes.getHour(), yes.getMinute(), yes.getSecond());
+        std::string yes_format = utility::stringFormat("%d%02d%02d%02d%02d%02d",
+                                                       yes.getYear(), yes.getMonth(), yes.getDayInTheMonth(),
+                                                       yes.getHour(), yes.getMinute(), yes.getSecond());
         uint64 yes_uint64 = std::stoull(yes_format);
 
         utility::ErrorState e;
         rtti::Factory factory;
         std::vector<std::unique_ptr<rtti::Object>> objects;
-        if(mFlightStatesTable->query(utility::stringFormat("%s > %s AND %s < %s", "TimeStamp",
-                                                       std::to_string(yes_uint64).c_str(),
-                                                       "TimeStamp",
-                                                       std::to_string(now_uint64).c_str()),
+        if(mFlightStatesTable->query(utility::stringFormat("%s > %s AND %s < %s",
+                                                           FlightStatesData::kTimeStampPropertyName,
+                                                           std::to_string(yes_uint64).c_str(),
+                                                           FlightStatesData::kTimeStampPropertyName,
+                                                           std::to_string(now_uint64).c_str()),
                                      objects, factory, e))
         {
             // Iterate over all the objects
@@ -94,7 +106,7 @@ namespace nap
             nap::Logger::error(*this, "Error querying database : %s", e.toString().c_str());
         }
 
-        nap::Logger::info(*this, "Cache filled with %i states", objects.size());
+        DEBUG_LOG(*this, "Cache filled with %i states", objects.size());
 
         return true;
     }
@@ -112,7 +124,7 @@ namespace nap
 
             mTime = 0.0;
 
-            nap::Logger::info(*this, "Getting flight states from url %s address %s", mRestClient->mURL.c_str(), mAddress.c_str());
+            DEBUG_LOG(*this, "Getting flight states from url %s address %s", mRestClient->mURL.c_str(), mAddress.c_str());
 
             std::vector<std::unique_ptr<APIBaseValue>> params;
             params.emplace_back(std::make_unique<APIValue<int>>("faa", 1));
@@ -135,7 +147,9 @@ namespace nap
 
                 // set timestamp
                 auto now = getCurrentDateTime();
-                std::string now_format = utility::stringFormat("%d%02d%02d%02d%02d%02d", now.getYear(), now.getMonth(), now.getDayInTheMonth(), now.getHour(), now.getMinute(), now.getSecond());
+                std::string now_format = utility::stringFormat("%d%02d%02d%02d%02d%02d",
+                                                               now.getYear(), now.getMonth(), now.getDayInTheMonth(),
+                                                               now.getHour(), now.getMinute(), now.getSecond());
                 uint64 now_uint64 = std::stoull(now_format);
                 state.mTimeStamp = now_uint64;
 
@@ -328,17 +342,38 @@ namespace nap
                     nap::Logger::error(*this, "Error writing to database : %s", err.toString().c_str());
                 }else
                 {
-                    nap::Logger::info(*this, "Successfully wrote %i states to database", states_added);
+                    DEBUG_LOG(*this, "Successfully wrote %i states to database", states_added);
                 }
 
                 // Remove entries older than retain hours property
                 auto past = DateTime(SystemClock::now() - std::chrono::hours(mRetainHours));
-                uint64 past_uint64 = std::stoull(utility::stringFormat("%d%02d%02d%02d%02d%02d", past.getYear(), past.getMonth(), past.getDayInTheMonth(), past.getHour(), past.getMinute(), past.getSecond()));
-                nap::Logger::info(*this, "Removing entries older than %s", past.toString().c_str());
-                if(!mFlightStatesTable->remove(utility::stringFormat("%s < %s", "TimeStamp", std::to_string(past_uint64).c_str()), err))
+                uint64 past_uint64 = std::stoull(utility::stringFormat("%d%02d%02d%02d%02d%02d",
+                                                                       past.getYear(), past.getMonth(), past.getDayInTheMonth(),
+                                                                       past.getHour(), past.getMinute(), past.getSecond()));
+                DEBUG_LOG(*this, "Removing entries older than %s", past.toString().c_str());
+                if(!mFlightStatesTable->remove(utility::stringFormat("%s < %s",
+                                                                     FlightStatesData::kTimeStampPropertyName,
+                                                                     std::to_string(past_uint64).c_str()), err))
                 {
                     nap::Logger::error(*this, "Error removing old entries : %s", err.toString().c_str());
                 }
+
+                // Perform indexing
+                DEBUG_LOG(*this, "Performing indexing...");
+                auto property_path = DatabasePropertyPath::sCreate(RTTI_OF(FlightStatesData),
+                                                                                 rtti::Path::fromString(FlightStatesData::kTimeStampPropertyName),
+                                                                                 err);
+                if(!err.hasErrors())
+                {
+                    if(!mFlightStatesTable->getOrCreateIndex(*property_path, err))
+                    {
+                        nap::Logger::error(*this, "Error creating index : %s", err.toString().c_str());
+                    }
+                }else
+                {
+                    nap::Logger::error(*this, "Error creating path : %s", err.toString().c_str());
+                }
+                DEBUG_LOG(*this, "Indexing done");
 
                 mQuerying = false;
             }, [this](const utility::ErrorState& error)

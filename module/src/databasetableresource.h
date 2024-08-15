@@ -41,6 +41,7 @@ namespace nap
             return it->second;
         }
 
+
         utility::ErrorState error_state;
         DatabaseTable* table = mDatabase->getOrCreateTable(tableName, RTTI_OF(T), {}, error_state);
         mTables[tableName] = table;

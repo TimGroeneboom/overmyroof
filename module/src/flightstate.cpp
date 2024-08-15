@@ -5,7 +5,7 @@
 #include <rapidjson/document.h>
 
 RTTI_BEGIN_CLASS(nap::FlightStatesData)
-    RTTI_PROPERTY("TimeStamp", &nap::FlightStatesData::mTimeStamp, nap::rtti::EPropertyMetaData::Default)
+    RTTI_PROPERTY(nap::FlightStatesData::kTimeStampPropertyName, &nap::FlightStatesData::mTimeStamp, nap::rtti::EPropertyMetaData::Default)
     RTTI_PROPERTY("Data", &nap::FlightStatesData::mData, nap::rtti::EPropertyMetaData::Default)
 RTTI_END_STRUCT
 

@@ -6,6 +6,15 @@ RTTI_END_CLASS
 
 namespace nap
 {
+    bool StatesCache::init(utility::ErrorState &errorState)
+    {
+        if(!errorState.check(mMaxEntries <= 0, "MaxEntries must be greater than 0"))
+            return false;
+
+        return true;
+    }
+
+
     void StatesCache::addStates(uint64 timestamp, const std::vector<FlightState>& states)
     {
         std::lock_guard<std::mutex> lock(mMutex);
@@ -13,10 +22,7 @@ namespace nap
         mStates[timestamp].mTimeStamp = timestamp;
         mNewestTimeStamp = timestamp;
         while(mStates.size() > mMaxEntries)
-        {
-            mStates.erase(mOldestTimeStamp);
-            mOldestTimeStamp = mStates.begin()->first;
-        }
+            mStates.erase(mStates.begin());
         mOldestTimeStamp = mStates.begin()->first;
     }
 

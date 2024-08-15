@@ -3,7 +3,7 @@
         {
             "Type": "nap::DatabaseTableResource",
             "mID": "FlightStatesDatabase",
-            "DatabaseName": "flights3.db"
+            "DatabaseName": "flights.db"
         },
         {
             "Type": "nap::Entity",

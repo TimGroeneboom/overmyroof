@@ -23,6 +23,8 @@ namespace nap
     {
     RTTI_ENABLE(rtti::Object)
     public:
+        static constexpr const char* kTimeStampPropertyName = "TimeStamp";
+
         // Properties
         std::string mData;
         nap::uint64 mTimeStamp;
