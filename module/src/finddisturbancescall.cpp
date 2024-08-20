@@ -44,7 +44,9 @@ namespace nap
 
     RestResponse FindDisturbancesCall::call(const RestValueMap &values)
     {
-        // start time to measure the time it takes to execute the call
+        // The timer calculates the time it takes to execute the request
+        // This is used to determine the performance of the request
+        // The amount of milliseconds it took to execute the request is added to the response
         SteadyTimer timer;
         timer.start();
 

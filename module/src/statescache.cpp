@@ -8,7 +8,7 @@ namespace nap
 {
     bool StatesCache::init(utility::ErrorState &errorState)
     {
-        if(!errorState.check(mMaxEntries <= 0, "MaxEntries must be greater than 0"))
+        if(!errorState.check(mMaxEntries > 0, "MaxEntries must be greater than 0"))
             return false;
 
         return true;

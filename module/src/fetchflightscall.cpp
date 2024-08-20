@@ -40,12 +40,22 @@ namespace nap
     {
         mDatabaseTable = mFlightStatesDatabase->getDatabaseTable<FlightStatesData>(mFlightStatesTableName);
 
+        // try and get the pro6pp key from the file
+        if(!utility::readFileToString(mPro6ppDescription->mPro6ppKeyFile, mPro6ppKey, errorState))
+        {
+            errorState.fail(utility::stringFormat("Failed to read pro6pp key from file : %s", errorState.toString().c_str()));
+            return false;
+        }
+
         return true;
     }
 
 
     RestResponse FetchFlightsCall::call(const std::unordered_map<std::string, std::unique_ptr<APIBaseValue>> &values)
     {
+        // The timer calculates the time it takes to execute the request
+        // This is used to determine the performance of the request
+        // The amount of milliseconds it took to execute the request is added to the response
         SteadyTimer timer;
         timer.start();
 
@@ -186,15 +196,6 @@ namespace nap
                 std::vector<std::unique_ptr<APIBaseValue>> pro6pp_values;
                 pro6pp_values.emplace_back(std::make_unique<APIValue<std::string>>(mPro6ppDescription->mPro6ppPostalCodeDescription, postal_code));
                 pro6pp_values.emplace_back(std::make_unique<APIValue<std::string>>(mPro6ppDescription->mPro6ppStreetNumberAndPremiseDescription, streetnumber_and_premise));
-
-                // try and get the pro6pp key from the file
-                std::string mPro6ppKey;
-                if(!utility::readFileToString(mPro6ppDescription->mPro6ppKeyFile, mPro6ppKey, errorState))
-                {
-                    errorState.fail(utility::stringFormat("Failed to read pro6pp key from file : %s", errorState.toString().c_str()));
-                    return false;
-                }
-
                 pro6pp_values.emplace_back(std::make_unique<APIValue<std::string>>(mPro6ppDescription->mPro6ppAuthKeyDescription, mPro6ppKey));
                 RestResponse pro6pp_response;
                 if(!mPro6ppClient->getBlocking(mPro6ppDescription->mPro6ppAddress, pro6pp_values, pro6pp_response, errorState))

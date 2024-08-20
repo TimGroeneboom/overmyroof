@@ -52,5 +52,6 @@ namespace nap
         int mMaxDurationHours = 48; ///< Property "MaxDurationHours" : Maximum duration in hours to search for flights
     protected:
         DatabaseTable* mDatabaseTable;
+        std::string mPro6ppKey;
     };
 }
