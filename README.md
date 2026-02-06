@@ -20,11 +20,26 @@ The application exposes a REST API to get the current and past flights over a sp
 
 ## Install and run the application
 
-- Download the latest release from the [releases page]()
+- Download the latest release from the [releases page](https://github.com/TimGroeneboom/overmyroof/releases)
 - Unzip the downloaded file to a directory of your choice.
 - Open a terminal and navigate to the directory where you unzipped the application.
 - Replace the line in [data/pro6pp.key](data/pro6pp.key) with your pro6pp API key.
 - Type `./overmyroof` to run the application.
+
+## Configure the application
+
+1. open terminal
+2. cd to the directory where you unzipped the application and type in `napkin/napkin` to open the napkin editor. You should see the following editor window
+ ![napkin editor](napkin.png)
+3. Most of the stuff should not be touched and is of no importance to the user. However, some variables can be interesting to change. These are the properties of the `PlaneLoggerComponent` . Tap this component (as shown in the screenshot) and you can edit the following properties:
+   * `interval` amount of seconds between each request to the flightradar24.com API. The default value is 10 seconds. Setting this value to a lower value will increase the amount of requests to the API and may cause your IP to be blocked. 
+   * `Retain Hours` amount of hours to retain the flight data in the SQLITE database. The default value is 768 hours (one month). Setting this value to a lower value will reduce the amount of storage space used by the application. You can set this as high as you want, depending on storage space.
+   * `Cache Hours` amount of hours to retain flight data in RAM. The default is 24 hours. Setting this value to a lower value will reduce the amount of RAM used by the application, but may increase the response time of the REST API. You can set this as high as you want, depending on RAM available on the machine.
+   * `Bounds` the geographical bounds of the area to track. The default value is `53.445884704589844,50.74940490722656,3.516303300857544,7.913614749908447` which is a bounding box around The Netherlands. The format is `lat_min,lat_max,lon_min,lon_max`. 
+4. To change the port of the server, tap on the `RestServer` resource and change the `Port` property to the desired port. The default value is 8080. See screenshot below.
+![napkin editor2](napkin2.png)
+5. In order to change some properties, edit the values in the editor and hit CTRL+S to save the changes. The application will automatically reload the changes and apply them. 
+6. These are the most important properties to change. You can take a look at other resources and most properties are self-explanatory. 
 
 ## Endpoints
 
@@ -137,6 +152,8 @@ Finds disturbances over the location with the given street number and premise, p
   }
 }
 ```
+
+Instead of `streetnumber_and_premise` and `postal_code`, the endpoint also accepts `latitude` and `longitude` parameters to specify the location. If both are provided, the application will use the `latitude` and `longitude` parameters and skip the pro6pp API call.
 
 ## Build from source
 
