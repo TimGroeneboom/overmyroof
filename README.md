@@ -5,8 +5,6 @@ OverMyRoof headless NAP Application
 
 This is a headless NAP application that uses flightradar24.com to track flights within a certain geographical bounding box. This data is stored and can be queried using a REST API with two endpoints.
 
-The NAP application uses the `napdatabase` and `naprest` module.
-
 At a configurable interval, the application requests the flightradar24.com API to get the current flights over a specific geographical bounding box. The application then stores all flights found in a SQLITE database.
 
 The application also uses the pro6pp API to get the coordinates a location based on the postal code. These coordinates are then cached and refreshed after a certain amount of time. See https://www.pro6pp.nl
@@ -158,6 +156,8 @@ Finds disturbances over the location with the given street number and premise, p
 Instead of `streetnumber_and_premise` and `postal_code`, the endpoint also accepts `latitude` and `longitude` parameters to specify the location. If both are provided, the application will use the `latitude` and `longitude` parameters and skip the pro6pp API call.
 
 ## Build from source
+
+The NAP application uses the `napdatabase` and `naprest` module.
 
 - Clone NAP from [here](https://github.com/TimGroeneboom/nap/) branch `overmyroof` into a directory of your choice.
 
