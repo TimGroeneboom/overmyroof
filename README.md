@@ -17,5 +17,5 @@ Clone or extract the source of NAP (> 0.7).
 
 - OverMyRoof uses the module `naprest` from [here](https://github.com/naivisoftware/naprest/). Clone `naprest` into the directory of `nap/modules` and run `./tools/setup_module.sh naprest` from the NAP root folder
 
-- Clone this repo into the apps/overmyroof directory. Add `add_subdirectory(apps/overmyrooof)` and `add_subdirectory(apps/overmyrooof/module)` to `CMakeLists.txt` in the NAP root folder.
+- Clone this repository into the `apps/overmyroof` directory. Add `add_subdirectory(apps/overmyrooof)` and `add_subdirectory(apps/overmyrooof/module)` to `CMakeLists.txt` in the NAP root folder.
 
