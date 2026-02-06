@@ -11,6 +11,7 @@
 
 #include <math.h>
 #include "utils.h"
+#include "macros.h"
 
 RTTI_BEGIN_CLASS_NO_DEFAULT_CONSTRUCTOR(nap::Pro6ppInterface)
     RTTI_PROPERTY("Pro6ppClient", &nap::FetchFlightsCall::mPro6ppClient, nap::rtti::EPropertyMetaData::Required | nap::rtti::EPropertyMetaData::Embedded)
@@ -24,13 +25,6 @@ RTTI_BEGIN_CLASS(nap::FetchFlightsCall)
     RTTI_PROPERTY("AddressCacheRetentionDays", &nap::FetchFlightsCall::mAddressCacheRetentionDays, nap::rtti::EPropertyMetaData::Default)
     RTTI_PROPERTY("MaxDurationHours", &nap::FetchFlightsCall::mMaxDurationHours, nap::rtti::EPropertyMetaData::Default)
 RTTI_END_CLASS
-
-#define ENABLE_DEBUG_LOG 0
-#if ENABLE_DEBUG_LOG
-#define DEBUG_LOG(...) nap::Logger::info(__VA_ARGS__)
-#else
-#define DEBUG_LOG(...)
-#endif
 
 namespace nap
 {

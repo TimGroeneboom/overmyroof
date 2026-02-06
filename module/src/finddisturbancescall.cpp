@@ -7,19 +7,13 @@
 #include "rapidjson/prettywriter.h"
 #include <nap/datetime.h>
 #include "utils.h"
+#include "macros.h"
 
 RTTI_BEGIN_CLASS(nap::FindDisturbancesCall)
 RTTI_PROPERTY("FetchFlightsCall", &nap::FindDisturbancesCall::mFetchFlightsCall, nap::rtti::EPropertyMetaData::Required, "Reference to the fetch flights call")
 RTTI_PROPERTY("MaxPeriod", &nap::FindDisturbancesCall::mMaxPeriod, nap::rtti::EPropertyMetaData::Default, "Maximum period in minutes to search for disturbances")
 RTTI_PROPERTY("MinPeriod", &nap::FindDisturbancesCall::mMinPeriod, nap::rtti::EPropertyMetaData::Default, "Minimum period in minutes to search for disturbances")
 RTTI_END_CLASS
-
-#define ENABLE_DEBUG_LOG 0
-#if ENABLE_DEBUG_LOG
-#define DEBUG_LOG(...) nap::Logger::info(__VA_ARGS__)
-#else
-#define DEBUG_LOG(...)
-#endif
 
 namespace nap
 {
