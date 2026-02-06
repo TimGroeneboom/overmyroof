@@ -47,7 +47,7 @@ Two endpoints are available, examples:
 
 ### Find flights over a location
  
-- `/find_flights?streetnumber_and_premise=202&postal_code=1118cp&altitude=10000&radius=4000&begin=20260206000000&end=20260207000000`
+- `http://127.0.0.1:8080/find_flights?streetnumber_and_premise=202&postal_code=1118cp&altitude=10000&radius=4000&begin=20260206000000&end=20260207000000`
 
 Finds flights over the location with the given street number and premise, postal code, altitude, radius, begin and end time. The altitude is in feet, the radius is in meters, the begin and end time are in the format `YYYYMMDDhhmmss`. The response is a JSON object with the following structure:
 
@@ -86,7 +86,7 @@ Instead of `streetnumber_and_premise` and `postal_code`, the endpoint also accep
 
 ### Find disturbances
 
-- `/find_disturbances?streetnumber_and_premise=202&postal_code=1118cp&altitude=10000&radius=4000&begin=20260206000000&end=20260207000000&period=60&occurrences=2`
+- `http://127.0.0.1:8080/find_disturbances?streetnumber_and_premise=202&postal_code=1118cp&altitude=10000&radius=4000&begin=20260206000000&end=20260207000000&period=60&occurrences=2`
 
 Finds disturbances over the location with the given street number and premise, postal code, altitude, radius, begin and end time, period and occurrences. The altitude is in feet, the radius is in meters, the begin and end time are in the format `YYYYMMDDhhmmss`, the period is in minutes and the occurrences is the number of times a flight has hit the given parameters to register as a disturbance. The response is a JSON object with the following structure:
 
