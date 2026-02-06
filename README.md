@@ -3,11 +3,13 @@ OverMyRoof headless NAP Application
 
 # Description
 
-This is a headless NAP application that uses flightradar24.com to track flights over a specific location. It uses the napdatabase and naprest module.
+This is a headless NAP application that uses flightradar24.com to track flights within a certain geographical bounding box. This data is stored and can be queried using a REST API with two endpoints.
 
-At given intervals, the application requests the flightradar24.com API to get the current flights over a specific bounding box location. The application stores the flights in the SQLITE database.
+The NAP application uses the `napdatabase` and `naprest` module.
 
-The application also uses the pro6pp API to get the coordinates a location based on the postal code. These coordinates are then cached and refreshed after a certain amount of time. https://www.pro6pp.nl
+At a configurable interval, the application requests the flightradar24.com API to get the current flights over a specific bounding box location. The application stores the flights in the SQLITE database.
+
+The application also uses the pro6pp API to get the coordinates a location based on the postal code. These coordinates are then cached and refreshed after a certain amount of time. See https://www.pro6pp.nl
 
 The application exposes a REST API to get the current and past flights over a specific location. This data is served as a JSON object.
 
