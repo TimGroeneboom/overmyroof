@@ -5,19 +5,19 @@
     "branch" : "main"
   },
   "nap" : {
-    "branch" : "main",
+    "branch" : "overmyroof",
     "url" : "git@github.com:napframework/nap.git"
   },
   "modules" : [
     {
       "name" : "naprest",
       "url" : "git@github.com:naivisoftware/naprest.git",
-      "branch" : "main"
+      "branch" : "overmyroof"
     },
     {
       "name": "napdatabase",
       "url": "git@github.com:TimGroeneboom/napdatabase.git",
-      "branch": "main"
+      "branch": "overmyroof"
     }
   ]
 }

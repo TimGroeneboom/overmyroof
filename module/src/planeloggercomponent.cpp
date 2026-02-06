@@ -5,6 +5,7 @@
 #include <rapidjson/rapidjson.h>
 #include <rapidjson/document.h>
 #include <rapidjson/writer.h>
+#include "macros.h"
 
 RTTI_BEGIN_CLASS(nap::PlaneLoggerComponent)
     RTTI_PROPERTY("RestClient", &nap::PlaneLoggerComponent::mRestClient, nap::rtti::EPropertyMetaData::Required)
@@ -20,13 +21,6 @@ RTTI_END_CLASS
 RTTI_BEGIN_CLASS_NO_DEFAULT_CONSTRUCTOR(nap::PlaneLoggerComponentInstance)
 RTTI_CONSTRUCTOR(nap::EntityInstance&, nap::Component&)
 RTTI_END_CLASS
-
-#define ENABLE_DEBUG_LOG 0
-#if ENABLE_DEBUG_LOG
-#define DEBUG_LOG(...) nap::Logger::info(__VA_ARGS__)
-#else
-#define DEBUG_LOG(...)
-#endif
 
 namespace nap
 {
