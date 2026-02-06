@@ -21,8 +21,8 @@ The application exposes a REST API to get the current and past flights over a sp
 ## Install and run the application
 
 - Download the latest release from the [releases page](https://github.com/TimGroeneboom/overmyroof/releases)
-- Unzip the downloaded file to a directory of your choice.
-- Open a terminal and navigate to the directory where you unzipped the application.
+- Untar the downloaded file to a directory of your choice.
+- Open a terminal and navigate to the directory where you untarred the application.
 - Replace the line in [data/pro6pp.key](data/pro6pp.key) with your pro6pp API key.
 - Type `./overmyroof` to run the application.
 
