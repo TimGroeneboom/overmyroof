@@ -15,7 +15,7 @@ The application exposes a REST API to get the current and past flights over a sp
 
 ## Requirements
 
-- The application has been tested on Ubuntu 24.04 and 22.04 on x86_64 architecture.
+- The application has been tested on Ubuntu 24.04 on x86_64 architecture.
 - An internet connection is required to access the flightradar24.com API.
 - Enough storage space to store the flight data in the SQLITE database.
 - A valid pro6pp API key
