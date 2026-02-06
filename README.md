@@ -6,7 +6,7 @@ OverMyRoof headless NAP Application
 This is a headless NAP application that uses flightradar24.com to track flights within a certain geographical bounding box. This data is stored and can be queried using a REST API with two endpoints. The application does 2 things :
 
 1. At a configurable interval, call the flightradar24.com API to obtain all flights within a certain geographical bounding box. This data is stored in a SQLITE database.
-2. Expose a REST API that enables user to query this database for flight data at certain geographical locations within certain parameters, as radius (distance) and altitude
+2. Expose a REST API that enables users to query this database for flight data at certain geographical locations using certain parameters, as radius (distance) and altitude
 
 At a configurable interval, the application requests the flightradar24.com API to get the current flights over a specific geographical bounding box. The application then stores all flights found in a SQLITE database.
 
