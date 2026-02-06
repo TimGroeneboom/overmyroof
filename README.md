@@ -7,7 +7,7 @@ This is a headless NAP application that uses flightradar24.com to track flights 
 
 The NAP application uses the `napdatabase` and `naprest` module.
 
-At a configurable interval, the application requests the flightradar24.com API to get the current flights over a specific bounding box location. The application stores the flights in the SQLITE database.
+At a configurable interval, the application requests the flightradar24.com API to get the current flights over a specific geographical bounding box. The application then stores all flights found in a SQLITE database.
 
 The application also uses the pro6pp API to get the coordinates a location based on the postal code. These coordinates are then cached and refreshed after a certain amount of time. See https://www.pro6pp.nl
 
